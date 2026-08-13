@@ -15,17 +15,28 @@
     "run_worker_first": ["/api/*"]
   },
 
-  // 02:30 UTC = 08:00 IST. Cron is UTC only; India has no daylight saving,
-  // so this stays correct all year.
+  // DAILY SENDING LIVES IN GITHUB ACTIONS, not here - its submission path
+  // proved to reach inboxes where the Worker's landed in spam. The Worker
+  // keeps the dashboard and manual sends only. To move sending back, restore:
+  //   "triggers": { "crons": ["30 2 * * *"] }   // 02:30 UTC = 08:00 IST
   "triggers": {
-    "crons": ["30 2 * * *"]
+    "crons": []
   },
+
+  // The dashboard's address. custom_domain makes Cloudflare create and manage
+  // the DNS record for this subdomain automatically.
+  "routes": [
+    {
+      "pattern": "birthday.akhileshnagargoje.in",
+      "custom_domain": true
+    }
+  ],
 
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "birthday-db",
-      "database_id": "PLACEHOLDER_RUN_WRANGLER_D1_CREATE",
+      "database_id": "2b311489-37a3-4751-9d89-89cd83c4ed6d",
       "migrations_dir": "migrations"
     }
   ],
@@ -33,11 +44,21 @@
   "vars": {
     "ENVIRONMENT": "production",
     "APP_NAME": "GCOERC",
-    // "brevo" needs no domain. Switch to "cloudflare" once a domain is
-    // onboarded with: wrangler email sending enable yourdomain.com
-    "EMAIL_PROVIDER": "brevo",
+    // "smtp"       Gmail directly, same as the Python version. Needs
+    //              SMTP_USER + SMTP_PASS secrets (an app password).
+    // "brevo"      HTTP API, needs BREVO_API_KEY.
+    // "cloudflare" native binding, needs an onboarded domain (paid plan).
+    "EMAIL_PROVIDER": "smtp",
+    "SMTP_HOST": "smtp.gmail.com",
+    // 465 = TLS from the first byte. 587 also works (STARTTLS).
+    // Port 25 is blocked by Cloudflare and will not work.
+    "SMTP_PORT": "465",
+    // Used for the EHLO greeting and the Message-ID. Must be a domain that
+    // resolves - a made-up hostname here reads as forgery to spam filters.
+    "MAIL_DOMAIN": "akhileshnagargoje.in",
     "SEND_FROM_EMAIL": "hymanper@gmail.com",
     "SEND_FROM_NAME": "GCOERC",
+    "REPLY_TO": "hymanper@gmail.com",
     "REPORT_EMAIL": "hymanper@gmail.com",
     // While set, every greeting goes here instead of to students.
     "TEST_EMAIL": ""
