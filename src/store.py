@@ -40,6 +40,17 @@ def _sync_down():
     config.SOURCE_PATH.write_text(text, encoding="utf-8")
 
 
+def sync():
+    """Public face of _sync_down, for callers outside this module."""
+    _sync_down()
+    # The sent log too, so "last sent" reflects what the workflow recorded.
+    if gitstore.enabled():
+        text, _ = gitstore.fetch("logs/sent_log.csv")
+        if text is not None:
+            config.SENT_LOG.parent.mkdir(parents=True, exist_ok=True)
+            config.SENT_LOG.write_text(text, encoding="utf-8")
+
+
 def _read_raw():
     _sync_down()
     path = config.SOURCE_PATH

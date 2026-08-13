@@ -1,0 +1,38 @@
+# Render blueprint: hosts the dashboard, free tier.
+#
+# The daily sending still lives in GitHub Actions - this service is only the
+# management UI. It reads and writes the roster through the GitHub API (the
+# repo stays the single source of truth) and dispatches the workflow for real
+# sends, so no mail ever leaves this host.
+#
+# After connecting the repo on render.com, set these in the service's
+# Environment tab (sync: false below means Render asks you for them):
+#
+#   DASH_USER      dashboard login name
+#   DASH_PASS      dashboard password
+#   FLASK_SECRET   any long random string (keeps logins across restarts)
+#   GITHUB_TOKEN   fine-grained PAT: this repo only, Contents read+write
+#                  AND Actions read+write
+#   GITHUB_REPO    AkhileshNagargoje/birthday-email-system
+
+services:
+  - type: web
+    name: birthday-dashboard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn src.dashboard:app --bind 0.0.0.0:$PORT --workers 1
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: DASH_USER
+        sync: false
+      - key: DASH_PASS
+        sync: false
+      - key: FLASK_SECRET
+        generateValue: true
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        value: AkhileshNagargoje/birthday-email-system
