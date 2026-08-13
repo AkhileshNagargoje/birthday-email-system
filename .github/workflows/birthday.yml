@@ -27,6 +27,14 @@ on:
         description: 'Only check the mail login works, then stop'
         type: boolean
         default: false
+      wish_email:
+        description: 'Send ONE wish to this address right now, then stop'
+        required: false
+        default: ''
+      wish_name:
+        description: 'Name to show on that greeting'
+        required: false
+        default: ''
 
 # Needed so the run can push the updated sent log back.
 permissions:
@@ -67,13 +75,22 @@ jobs:
         if: github.event.inputs.check_login == 'true'
         run: python -m src.main --check-login
 
+      - name: Send a single one-off wish
+        if: github.event.inputs.check_login != 'true' && github.event.inputs.wish_email != ''
+        run: |
+          ARGS="--wish ${{ github.event.inputs.wish_email }}"
+          if [ -n "${{ github.event.inputs.wish_name }}" ]; then
+            ARGS="$ARGS --wish-name '${{ github.event.inputs.wish_name }}'"
+          fi
+          eval python -m src.main $ARGS
+
       - name: Check the roster before sending
-        if: github.event.inputs.check_login != 'true'
+        if: github.event.inputs.check_login != 'true' && github.event.inputs.wish_email == ''
         run: python -m src.main --validate
         continue-on-error: true
 
       - name: Send birthday wishes
-        if: github.event.inputs.check_login != 'true'
+        if: github.event.inputs.check_login != 'true' && github.event.inputs.wish_email == ''
         run: |
           ARGS=""
           if [ -n "${{ github.event.inputs.pretend_date }}" ]; then
