@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { api } from "../api/client";
+import { api, isQueued, type Queued } from "../api/client";
 import type { RunResult } from "../../../shared/types";
 
-function describe(result: RunResult): string {
+function describe(result: RunResult | Queued): string {
+  if (isQueued(result)) {
+    return `${result.message}\n\nWatch it run: ${result.actionsUrl}`;
+  }
   const head = `${result.date}: ${result.entries.length} birthday(s).` +
     (result.dryRun ? "  DRY RUN - nothing sent." : "");
   const lines = result.entries.map(
@@ -47,7 +50,7 @@ export default function ActionsPanel({ onChanged }: { onChanged: () => void }) {
     if (
       !window.confirm(
         "Send real birthday emails now to everyone with a birthday today?\n\n" +
-          "This cannot be undone.",
+          "This runs on GitHub Actions and cannot be undone.",
       )
     )
       return;

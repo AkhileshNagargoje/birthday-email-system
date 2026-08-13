@@ -56,6 +56,10 @@
     // Used for the EHLO greeting and the Message-ID. Must be a domain that
     // resolves - a made-up hostname here reads as forgery to spam filters.
     "MAIL_DOMAIN": "akhileshnagargoje.in",
+    // Every send - daily or manual - is dispatched to this repo's workflow,
+    // so there is exactly one sending path and one sent-log.
+    "GITHUB_REPO": "AkhileshNagargoje/birthday-email-system",
+    "GITHUB_WORKFLOW": "birthday.yml",
     "SEND_FROM_EMAIL": "hymanper@gmail.com",
     "SEND_FROM_NAME": "GCOERC",
     "REPLY_TO": "hymanper@gmail.com",

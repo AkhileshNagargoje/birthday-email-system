@@ -7,6 +7,17 @@
 
 import type { Overview, RunResult, SendLogEntry, Student } from "../../../shared/types";
 
+/** A real send is queued onto GitHub Actions rather than performed inline. */
+export interface Queued {
+  queued: true;
+  actionsUrl: string;
+  message: string;
+}
+
+export function isQueued(value: RunResult | Queued): value is Queued {
+  return "queued" in value && value.queued === true;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -87,19 +98,24 @@ export const api = {
   // ---- actions ----
   history: () => request<SendLogEntry[]>("/history"),
 
-  run: (options: { date?: string; dryRun: boolean; force?: boolean }) =>
-    request<RunResult>("/run", {
+  run: (options: { date?: string; dryRun: boolean }) =>
+    request<RunResult | Queued>("/run", {
       method: "POST",
       body: body(options),
       confirmSend: !options.dryRun,
     }),
 
   wish: (options: { emails: string; names?: string; note?: string; dryRun: boolean }) =>
-    request<RunResult>("/wish", {
+    request<RunResult | Queued>("/wish", {
       method: "POST",
       body: body(options),
       confirmSend: !options.dryRun,
     }),
+
+  workflowRuns: () =>
+    request<Array<{ status: string; conclusion: string | null; startedAt: string; url: string }>>(
+      "/runs",
+    ),
 
   checkEmail: () =>
     request<{ ok: boolean; provider?: string; message: string }>("/check-email", {
