@@ -1,16 +1,16 @@
 name: Birthday wishes
 
 on:
-  # DAILY SCHEDULE IS OFF while the Windows Task Scheduler on the PC is the
-  # one sending. Running both would wish everyone twice - the two keep
-  # separate sent-logs and cannot see each other.
+  # THE CLOUD IS NOW THE SENDER. This runs on GitHub's machines, so the PC
+  # can be switched off. The Windows task has been disabled to match -
+  # running both would wish everyone twice, since the two keep separate
+  # sent-logs and cannot see each other.
   #
-  # To move sending to the cloud (works with the PC switched off):
-  #   1. uncomment the two lines below
-  #   2. turn off the Windows task:  schtasks /delete /tn "Birthday Email System" /f
-  #
-  # schedule:
-  #   - cron: '30 2 * * *'   # 02:30 UTC = 08:00 IST
+  # To hand sending back to the PC:
+  #   1. comment out the two lines below
+  #   2. schtasks /change /tn "Birthday Email System" /enable
+  schedule:
+    - cron: '30 2 * * *'   # 02:30 UTC = 08:00 IST
 
   # Lets you run it by hand from the Actions tab.
   workflow_dispatch:
