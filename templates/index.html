@@ -5,226 +5,350 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Birthday Email System</title>
 <style>
+  /* ---------------------------------------------------------------------
+     One neutral ramp, no hues. State is carried by weight, contrast and
+     rules rather than colour, which keeps the whole thing calm and makes
+     the light and dark themes exact inversions of each other.
+     --------------------------------------------------------------------- */
   :root {
-    --bg: #f6f7f9;      --card: #ffffff;   --ink: #1c1f23;
-    --muted: #6b7280;   --line: #e5e7eb;   --accent: #4f46e5;
-    --good: #15803d;    --warn: #b45309;   --bad: #b91c1c;
-    --good-bg: #ecfdf5; --warn-bg: #fffbeb; --bad-bg: #fef2f2;
+    --bg:        #ffffff;
+    --surface:   #fafafa;
+    --ink:       #111113;
+    /* The ramp is tuned so even --ink-4, used for labels and hints, stays
+       above 4.5:1 on the background. Quiet greys, still readable. */
+    --ink-2:     #46474b;
+    --ink-3:     #5f6065;
+    --ink-4:     #74757a;
+    --line:      #e6e6e8;
+    --line-2:    #d2d2d6;
+    --invert-bg: #111113;
+    --invert-ink:#ffffff;
+    --focus:     #111113;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #14161a;      --card: #1c1f25;   --ink: #e8eaed;
-      --muted: #9aa1ac;   --line: #2c313a;   --accent: #818cf8;
-      --good: #4ade80;    --warn: #fbbf24;   --bad: #f87171;
-      --good-bg: #0f2a1d; --warn-bg: #2a2110; --bad-bg: #2a1414;
-    }
-  }
+  /* Deliberately light in every theme: white page, black ink, black buttons
+     with white text. To go back to following the system theme, restore the
+     prefers-color-scheme block that used to live here. */
+
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0; padding: 28px 20px 60px; background: var(--bg); color: var(--ink);
-    font: 15px/1.55 "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.6 ui-sans-serif, -apple-system, "Segoe UI", system-ui,
+          Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.006em;
   }
-  .wrap { max-width: 980px; margin: 0 auto; }
-  h1 { font-size: 22px; margin: 0 0 2px; }
-  h2 { font-size: 15px; margin: 0 0 14px; letter-spacing: .02em;
-       text-transform: uppercase; color: var(--muted); }
-  .sub { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
-  .card { background: var(--card); border: 1px solid var(--line);
-          border-radius: 10px; padding: 20px 22px; margin-bottom: 18px; }
 
-  .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-  .stat { background: var(--card); border: 1px solid var(--line);
-          border-radius: 10px; padding: 14px 16px; }
-  .stat .n { font-size: 26px; font-weight: 650; }
-  .stat .l { font-size: 12px; color: var(--muted); text-transform: uppercase;
-             letter-spacing: .04em; }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 24px 96px; }
 
-  .note { border-radius: 8px; padding: 11px 14px; margin-bottom: 16px; font-size: 14px; }
-  .note.good { background: var(--good-bg); color: var(--good); }
-  .note.warn { background: var(--warn-bg); color: var(--warn); }
-  .note.bad  { background: var(--bad-bg);  color: var(--bad); }
-  .note ul { margin: 6px 0 0; padding-left: 20px; }
-
-  button, .btn {
-    font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 7px;
-    border: 1px solid var(--line); background: var(--card); color: var(--ink);
-    cursor: pointer;
+  /* ---- masthead ---- */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: saturate(1.4) blur(12px);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 40px;
   }
-  button:hover { border-color: var(--accent); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button.danger  { color: var(--bad); }
-  button.tiny { padding: 5px 9px; font-size: 13px; }
-  .row { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
-
-  input, select {
-    font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 7px;
-    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
-    width: 100%;
+  .head-in {
+    max-width: 940px; margin: 0 auto; padding: 18px 24px;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
   }
-  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .grid2 { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .brand { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .brand span { color: var(--ink-4); font-weight: 400; }
+  .src { font-size: 12.5px; color: var(--ink-3); }
 
+  /* ---- sections ---- */
+  section { padding: 34px 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 0; }
+  h2 {
+    margin: 0 0 20px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .11em; color: var(--ink-3);
+  }
+  .lede { margin: -12px 0 20px; font-size: 14px; color: var(--ink-3); max-width: 62ch; }
+
+  /* ---- status banner ---- */
+  .banner {
+    border: 1px solid var(--line-2); border-left-width: 3px;
+    border-radius: 3px; padding: 13px 16px; margin-bottom: 34px;
+    font-size: 14px; color: var(--ink-2); background: var(--surface);
+  }
+  .banner strong { color: var(--ink); font-weight: 600; }
+  .banner.loud { border-left-color: var(--ink); }
+  .banner ul { margin: 7px 0 0; padding-left: 18px; }
+  .banner li { margin: 2px 0; }
+
+  /* ---- stats ---- */
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+  }
+  .stat { padding: 18px 20px; border-left: 1px solid var(--line); }
+  .stat:first-child { border-left: 0; }
+  .stat .n {
+    font-size: 30px; font-weight: 300; line-height: 1.1;
+    letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  }
+  .stat .n.sm { font-size: 14px; font-weight: 400; padding: 9px 0 7px; color: var(--ink-2); }
+  .stat .n.flag { font-weight: 500; }
+  .stat .l {
+    margin-top: 7px; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--ink-4);
+  }
+
+  /* ---- controls ---- */
+  button {
+    font: inherit; font-size: 13.5px; font-weight: 500;
+    padding: 8px 15px; border-radius: 4px;
+    border: 1px solid var(--line-2); background: transparent; color: var(--ink);
+    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+  }
+  button:hover { border-color: var(--ink-3); background: var(--surface); }
+  button:active { transform: translateY(.5px); }
+  button.primary {
+    background: var(--invert-bg); border-color: var(--invert-bg);
+    color: var(--invert-ink);
+  }
+  button.primary:hover { opacity: .84; background: var(--invert-bg); }
+  button.tiny { padding: 4px 9px; font-size: 12.5px; }
+  button.ghost { border-color: transparent; color: var(--ink-3); }
+  button.ghost:hover { color: var(--ink); border-color: var(--line-2); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  label {
+    display: block; font-size: 11px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--ink-4); margin-bottom: 6px;
+  }
+  input, select, textarea {
+    font: inherit; font-size: 14px; width: 100%;
+    padding: 8px 11px; border-radius: 4px;
+    border: 1px solid var(--line-2); background: var(--bg); color: var(--ink);
+    transition: border-color .12s, box-shadow .12s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 12%, transparent);
+  }
+  input::placeholder, textarea::placeholder { color: var(--ink-4); }
+  textarea { resize: vertical; line-height: 1.55; }
+  .hint { margin: 6px 0 0; font-size: 12px; color: var(--ink-4); }
+  .fields {
+    display: grid; gap: 16px 18px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  }
+
+  /* ---- list ---- */
+  .scroll { overflow-x: auto; margin: 0 -4px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; font-size: 12px; text-transform: uppercase;
-       letter-spacing: .04em; color: var(--muted); font-weight: 600;
-       padding: 0 8px 8px; }
-  td { padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: middle; }
-  .scroll { overflow-x: auto; }
-  .flag { font-size: 12px; color: var(--bad); }
-
-  pre#out {
-    background: #0e1116; color: #d7dce3; border-radius: 8px; padding: 14px 16px;
-    font: 13px/1.5 Consolas, "SF Mono", Menlo, monospace; white-space: pre-wrap;
-    max-height: 320px; overflow: auto; margin: 14px 0 0; display: none;
+  th {
+    text-align: left; font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--ink-4); padding: 0 4px 10px;
+    border-bottom: 1px solid var(--line);
   }
-  details { margin-top: 8px; }
-  summary { cursor: pointer; color: var(--accent); font-size: 14px; }
-  .up { display: flex; justify-content: space-between; padding: 5px 0;
-        border-bottom: 1px solid var(--line); font-size: 14px; }
+  td { padding: 5px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:hover td { background: var(--surface); }
+  /* Rows read as text until you touch them - the grid stays quiet. */
+  td input {
+    border-color: transparent; background: transparent; padding: 6px 8px;
+  }
+  tr:hover td input { border-color: var(--line); }
+  td input:focus { background: var(--bg); border-color: var(--focus); }
+  .flag {
+    margin-top: 3px; font-size: 11.5px; color: var(--ink-2);
+    border-left: 2px solid var(--ink); padding-left: 7px;
+  }
+  .empty { color: var(--ink-4); padding: 22px 4px; font-size: 14px; }
+
+  /* ---- upcoming ---- */
+  .up {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
   .up:last-child { border-bottom: 0; }
-  .up span:last-child { color: var(--muted); font-size: 13px; }
-  img#poster { max-width: 100%; border-radius: 8px; margin-top: 12px; display: none; }
-  iframe#frame { width: 100%; height: 520px; border: 1px solid var(--line);
-                 border-radius: 8px; margin-top: 12px; display: none;
-                 background: #fff; }
+  .up .when {
+    color: var(--ink-4); font-size: 12.5px; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .up .now { color: var(--ink); font-weight: 600; }
+
+  /* ---- output ---- */
+  pre#out {
+    background: var(--surface); color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 14px 16px; margin: 18px 0 0;
+    font: 12.5px/1.65 ui-monospace, "Cascadia Mono", Consolas, monospace;
+    white-space: pre-wrap; max-height: 300px; overflow: auto; display: none;
+  }
+  img#poster { max-width: 100%; border-radius: 4px; margin-top: 16px; display: none; }
+  iframe#frame {
+    width: 100%; height: 540px; margin-top: 16px; display: none;
+    border: 1px solid var(--line); border-radius: 4px; background: #fff;
+  }
+
+  details { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; }
+  summary {
+    cursor: pointer; font-size: 13px; color: var(--ink-3); list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "+ "; color: var(--ink-4); }
+  details[open] summary::before { content: "– "; }
+  summary:hover { color: var(--ink); }
+  details p { font-size: 13.5px; color: var(--ink-3); max-width: 64ch; }
+
+  .danger-note { margin: 14px 0 0; font-size: 12.5px; color: var(--ink-3); }
+  .danger-note::before {
+    content: ""; display: inline-block; width: 5px; height: 5px;
+    border-radius: 50%; background: var(--ink-3);
+    margin-right: 8px; vertical-align: middle;
+  }
 </style>
 </head>
 <body>
+
+<header>
+  <div class="head-in">
+    <div class="brand">Birthday Email System <span>· {{ settings.EMAIL_FROM_NAME or 'unnamed' }}</span></div>
+    <div class="src">{{ source }}</div>
+  </div>
+</header>
+
 <div class="wrap">
 
-  <h1>Birthday Email System</h1>
-  <p class="sub">Reading students from <strong>{{ source }}</strong></p>
-
-  {% if message %}<div class="note good">{{ message }}</div>{% endif %}
-  {% if error %}<div class="note bad">{{ error }}</div>{% endif %}
+  {% if message %}<div class="banner loud">{{ message }}</div>{% endif %}
+  {% if error %}<div class="banner loud"><strong>Problem.</strong> {{ error }}</div>{% endif %}
 
   {% if blockers %}
-  <div class="note warn">
-    <strong>Not ready to send yet:</strong>
+  <div class="banner loud">
+    <strong>Not ready to send.</strong>
     <ul>{% for b in blockers %}<li>{{ b }}</li>{% endfor %}</ul>
   </div>
   {% elif test_mode %}
-  <div class="note warn">
-    <strong>Test mode.</strong> Every wish goes to
-    {{ settings.TEST_EMAIL }} instead of to students. Clear TEST_EMAIL in
-    Settings when you are ready to go live.
+  <div class="banner loud">
+    <strong>Test mode.</strong> Every wish goes to {{ settings.TEST_EMAIL }},
+    not to students. Clear the test address in Settings to go live.
   </div>
   {% else %}
-  <div class="note good"><strong>Live.</strong> Wishes will go to real students.</div>
+  <div class="banner"><strong>Live.</strong> Wishes go to real recipients.</div>
   {% endif %}
 
   {% if overview.error %}
-  <div class="note bad">Could not read the student list: {{ overview.error }}</div>
+  <div class="banner loud"><strong>Cannot read the list.</strong> {{ overview.error }}</div>
   {% endif %}
 
   <!-- ---------------------------------------------------------------- -->
-  <div class="stats" style="margin-bottom:18px;">
-    <div class="stat"><div class="n">{{ overview.total }}</div><div class="l">Students</div></div>
-    <div class="stat"><div class="n">{{ overview.today|length }}</div><div class="l">Birthdays today</div></div>
-    <div class="stat">
-      <div class="n" {% if overview.problems %}style="color:var(--bad)"{% endif %}>{{ overview.problems }}</div>
-      <div class="l">Rows with problems</div>
-    </div>
-    <div class="stat">
-      <div class="n" style="font-size:15px;padding-top:8px;">
-        {% if overview.last_run %}{{ overview.last_run.when }}{% else %}never{% endif %}
+  <section>
+    <div class="stats">
+      <div class="stat">
+        <div class="n">{{ overview.total }}</div>
+        <div class="l">Students</div>
       </div>
-      <div class="l">Last sent</div>
+      <div class="stat">
+        <div class="n">{{ overview.today|length }}</div>
+        <div class="l">Birthdays today</div>
+      </div>
+      <div class="stat">
+        <div class="n {% if overview.problems %}flag{% endif %}">{{ overview.problems }}</div>
+        <div class="l">Need fixing</div>
+      </div>
+      <div class="stat">
+        <div class="n sm">{% if overview.last_run %}{{ overview.last_run.when }}{% else %}Never{% endif %}</div>
+        <div class="l">Last sent</div>
+      </div>
     </div>
-  </div>
+  </section>
 
   <!-- ---------------------------------------------------------------- -->
-  <div class="card">
+  <section>
     <h2>Actions</h2>
     <div class="row">
       <button onclick="act('/action/check')">Check the list</button>
-      <button onclick="testRun()">Test run (sends nothing)</button>
-      <button onclick="previewPoster()">Preview poster</button>
-      <button onclick="act('/action/template')">Rebuild template</button>
+      <button onclick="testRun()">Test run</button>
+      <button onclick="previewPoster()">Preview greeting</button>
       <button class="primary" onclick="sendReal()">Send today's wishes</button>
     </div>
     <pre id="out"></pre>
     <img id="poster" alt="greeting preview">
     <iframe id="frame" title="greeting preview"></iframe>
-  </div>
-
-  <!-- ---------------------------------------------------------------- -->
-  <div class="card">
-    <h2>Wish anyone</h2>
-    <p style="margin:-6px 0 16px;font-size:14px;color:var(--muted);">
-      Send a birthday wish to any address right now, whether or not they are on
-      the student list and whatever today's date is.
-    </p>
-    <div class="grid2">
-      <div>
-        <label>Email address</label>
-        <input id="w-email" placeholder="friend@example.com">
-        <p style="margin:5px 0 0;font-size:12px;color:var(--muted);">
-          Several at once? Separate them with commas.
-        </p>
-      </div>
-      <div>
-        <label>Name for the poster</label>
-        <input id="w-name" placeholder="left blank = guessed from the address">
-        <p style="margin:5px 0 0;font-size:12px;color:var(--muted);">
-          One name per address, in the same order.
-        </p>
-      </div>
-    </div>
-    <div style="margin-top:14px;">
-      <label>Your own message (optional)</label>
-      <textarea id="w-note" rows="3"
-        placeholder="Leave blank for the standard birthday wording."
-        style="font:inherit;font-size:14px;padding:8px 10px;border-radius:7px;
-               border:1px solid var(--line);background:var(--bg);color:var(--ink);
-               width:100%;resize:vertical;"></textarea>
-    </div>
-    <div class="row" style="margin-top:14px;">
-      <button onclick="wishAnyone(true)">Preview it first</button>
-      <button class="primary" onclick="wishAnyone(false)">Send now</button>
-    </div>
-    <p style="margin:12px 0 0;font-size:13px;color:var(--warn);">
-      The test-address safety net does not apply here - you named the recipient,
-      so this goes to them.
-    </p>
-  </div>
+  </section>
 
   <!-- ---------------------------------------------------------------- -->
   {% if overview.today or overview.upcoming %}
-  <div class="card">
+  <section>
     <h2>Coming up</h2>
     {% for name in overview.today %}
-      <div class="up"><span><strong>{{ name }}</strong></span><span>today</span></div>
+      <div class="up"><span class="now">{{ name }}</span><span class="when">Today</span></div>
     {% endfor %}
     {% for u in overview.upcoming %}
-      <div class="up"><span>{{ u.name }}</span><span>{{ u.date }} &middot; in {{ u.days }} day{{ '' if u.days == 1 else 's' }}</span></div>
+      <div class="up">
+        <span>{{ u.name }}</span>
+        <span class="when">{{ u.date }} · {{ u.days }} day{{ '' if u.days == 1 else 's' }}</span>
+      </div>
     {% endfor %}
-  </div>
+  </section>
   {% endif %}
 
   <!-- ---------------------------------------------------------------- -->
-  <div class="card">
+  <section>
+    <h2>Wish anyone</h2>
+    <p class="lede">
+      Send a greeting to any address right now, whether or not they are on the
+      list and whatever today's date is.
+    </p>
+    <div class="fields">
+      <div>
+        <label>Email address</label>
+        <input id="w-email" placeholder="friend@example.com">
+        <p class="hint">Several at once? Separate with commas.</p>
+      </div>
+      <div>
+        <label>Name to show</label>
+        <input id="w-name" placeholder="blank = guessed from the address">
+        <p class="hint">One name per address, same order.</p>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <label>Your own message</label>
+      <textarea id="w-note" rows="3"
+        placeholder="Leave blank for the standard birthday wording."></textarea>
+    </div>
+    <div class="row" style="margin-top:16px;">
+      <button onclick="wishAnyone(true)">Preview</button>
+      <button class="primary" onclick="wishAnyone(false)">Send now</button>
+    </div>
+    <p class="danger-note">
+      The test-address safety net does not apply here — you named the
+      recipient, so this reaches them.
+    </p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section>
     <h2>Add a student</h2>
     <form method="post" action="/students/add">
-      <div class="grid2">
-        <div><label>Full name</label><input name="name" required placeholder="Asha Kulkarni"></div>
-        <div><label>Email</label><input name="email" type="email" required placeholder="asha@college.edu"></div>
-        <div><label>Date of birth</label><input name="dob" type="date" required></div>
+      <div class="fields">
+        <div><label>Full name</label>
+          <input name="name" required placeholder="Asha Kulkarni"></div>
+        <div><label>Email</label>
+          <input name="email" type="email" required placeholder="asha@gcoerc.edu"></div>
+        <div><label>Date of birth</label>
+          <input name="dob" type="date" required></div>
         <div style="display:flex;align-items:flex-end;">
-          <button class="primary" type="submit" style="width:100%;">Add</button>
+          <button class="primary" type="submit" style="width:100%;">Add student</button>
         </div>
       </div>
     </form>
-  </div>
+  </section>
 
   <!-- ---------------------------------------------------------------- -->
-  <div class="card">
-    <h2>Students ({{ students|length }})</h2>
+  <section>
+    <h2>Students · {{ students|length }}</h2>
     <div class="scroll">
     <table>
       <thead>
         <tr><th style="width:30%">Name</th><th style="width:34%">Email</th>
-            <th style="width:20%">Birthday</th><th></th></tr>
+            <th style="width:22%">Birthday</th><th></th></tr>
       </thead>
       <tbody>
       {% for s in students %}
@@ -237,75 +361,78 @@
               <input name="dob" type="{{ 'date' if s.problem != 'date not understood' and s.dob|length == 10 else 'text' }}" value="{{ s.dob }}">
               {% if s.problem %}<div class="flag">{{ s.problem }}</div>{% endif %}
             </td>
-            <td style="white-space:nowrap;">
+            <td style="white-space:nowrap;text-align:right;">
               <button class="tiny" type="submit">Save</button>
           </form>
               <form method="post" action="/students/delete" style="display:inline"
                     onsubmit="return confirm('Remove {{ s.name|e }} from the list?')">
                 <input type="hidden" name="index" value="{{ s.index }}">
-                <button class="tiny danger" type="submit">Delete</button>
+                <button class="tiny ghost" type="submit">Delete</button>
               </form>
             </td>
         </tr>
       {% else %}
-        <tr><td colspan="4" style="color:var(--muted);padding:16px 8px;">
-          Nobody on the list yet. Add someone above.</td></tr>
+        <tr><td colspan="4" class="empty">Nobody on the list yet.</td></tr>
       {% endfor %}
       </tbody>
     </table>
     </div>
-  </div>
+  </section>
 
   <!-- ---------------------------------------------------------------- -->
-  <div class="card">
+  <section>
     <h2>Settings</h2>
     <form method="post" action="/settings">
-      <div class="grid2">
+      <div class="fields">
         <div><label>Sending address</label>
           <input name="EMAIL_USER" value="{{ settings.EMAIL_USER }}"></div>
         <div><label>App password</label>
           <input name="EMAIL_PASS" type="password" value="{{ settings.EMAIL_PASS }}"></div>
-        <div><label>Name students see</label>
+        <div><label>Name recipients see</label>
           <input name="EMAIL_FROM_NAME" value="{{ settings.EMAIL_FROM_NAME }}"></div>
-        <div><label>Replies go to</label>
-          <input name="REPLY_TO" value="{{ settings.REPLY_TO }}"></div>
-        <div><label>Test address (safety net)</label>
+        <div><label>Test address</label>
           <input name="TEST_EMAIL" value="{{ settings.TEST_EMAIL }}"
-                 placeholder="blank = send to real students"></div>
+                 placeholder="blank = send for real"></div>
         <div><label>Daily report to</label>
           <input name="REPORT_EMAIL" value="{{ settings.REPORT_EMAIL }}"
                  placeholder="your address"></div>
-        <div><label>Report even on quiet days</label>
-          <select name="REPORT_ALWAYS">
-            <option value="yes" {% if settings.REPORT_ALWAYS != 'no' %}selected{% endif %}>Yes</option>
-            <option value="no"  {% if settings.REPORT_ALWAYS == 'no' %}selected{% endif %}>No</option>
-          </select></div>
-        <div><label>Greeting style</label>
-          <select name="POSTER_MODE">
-            <option value="html" {% if settings.POSTER_MODE != 'image' %}selected{% endif %}>
-              HTML banner (shows even if images are blocked)</option>
-            <option value="image" {% if settings.POSTER_MODE == 'image' %}selected{% endif %}>
-              Image poster (from assets/template.png)</option>
-          </select></div>
-        <div><label>SMTP server</label>
-          <input name="SMTP_HOST" value="{{ settings.SMTP_HOST }}"></div>
-        <div><label>SMTP port</label>
-          <input name="SMTP_PORT" value="{{ settings.SMTP_PORT }}"></div>
       </div>
-      <div class="row" style="margin-top:16px;">
+
+      <details>
+        <summary>Advanced</summary>
+        <div class="fields" style="margin-top:16px;">
+          <div><label>Replies go to</label>
+            <input name="REPLY_TO" value="{{ settings.REPLY_TO }}"></div>
+          <div><label>Report on quiet days</label>
+            <select name="REPORT_ALWAYS">
+              <option value="yes" {% if settings.REPORT_ALWAYS != 'no' %}selected{% endif %}>Yes</option>
+              <option value="no"  {% if settings.REPORT_ALWAYS == 'no' %}selected{% endif %}>No</option>
+            </select></div>
+          <div><label>Greeting style</label>
+            <select name="POSTER_MODE">
+              <option value="html" {% if settings.POSTER_MODE != 'image' %}selected{% endif %}>HTML banner</option>
+              <option value="image" {% if settings.POSTER_MODE == 'image' %}selected{% endif %}>Image poster</option>
+            </select></div>
+          <div><label>SMTP server</label>
+            <input name="SMTP_HOST" value="{{ settings.SMTP_HOST }}"></div>
+          <div><label>SMTP port</label>
+            <input name="SMTP_PORT" value="{{ settings.SMTP_PORT }}"></div>
+        </div>
+        <p class="hint" style="margin-top:14px;">
+          Set once and rarely touched. Changing SMTP details only matters if
+          you move off Gmail.
+        </p>
+      </details>
+
+      <div class="row" style="margin-top:22px;">
         <button class="primary" type="submit">Save settings</button>
       </div>
     </form>
-    <details>
-      <summary>Where do I get an app password?</summary>
-      <p style="font-size:14px;color:var(--muted);">
-        On the sending Google account: turn on 2-Step Verification, then
-        Google Account &rarr; Security &rarr; App passwords. It gives you a
-        16-character code. That code goes in the field above, not your normal
-        password.
-      </p>
-    </details>
-  </div>
+    <p class="hint" style="margin-top:16px;">
+      App password: on the sending Google account turn on 2-Step Verification,
+      then Google Account → Security → App passwords.
+    </p>
+  </section>
 
 </div>
 
@@ -331,7 +458,7 @@ function showPreview(kind, url) {
 }
 
 async function post(url, body) {
-  show('Working...');
+  show('Working…');
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -351,7 +478,7 @@ function act(url) { hidePreview(); return post(url); }
 
 function testRun() {
   hidePreview();
-  const when = prompt('Pretend it is which date? (YYYY-MM-DD, or leave blank for today)', '');
+  const when = prompt('Pretend it is which date? (YYYY-MM-DD, or blank for today)', '');
   if (when === null) return;
   post('/action/test', {date: when});
 }
@@ -395,10 +522,10 @@ async function wishAnyone(dry) {
 }
 
 function sendReal() {
-  poster.style.display = 'none';
+  hidePreview();
   const answer = prompt(
-    'This sends real email to real students, right now, and cannot be undone.\n\n' +
-    'Type SEND to continue.');
+    'This sends real email to everyone with a birthday today, and cannot be ' +
+    'undone.\n\nType SEND to continue.');
   if (answer !== 'SEND') { show('Cancelled. Nothing was sent.'); return; }
   post('/action/send', {confirm: 'SEND'});
 }
