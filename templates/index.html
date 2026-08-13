@@ -6,201 +6,251 @@
 <title>Birthday Email System</title>
 <style>
   /* ---------------------------------------------------------------------
-     One neutral ramp, no hues. State is carried by weight, contrast and
-     rules rather than colour, which keeps the whole thing calm and makes
-     the light and dark themes exact inversions of each other.
+     Tactile minimalism. The layout stays spare and monochrome, but every
+     surface behaves like a physical one: panels sit on the page and cast a
+     shadow, buttons have a lit top edge and press down when clicked, inputs
+     are recessed grooves. No hues, no ornament - the depth does the work
+     that colour usually does.
      --------------------------------------------------------------------- */
   :root {
-    --bg:        #ffffff;
-    --surface:   #fafafa;
+    --page:      #eeeef0;   /* the desk */
+    --panel:     #ffffff;   /* paper on it */
+    --sunk:      #f7f7f8;   /* recessed wells */
     --ink:       #111113;
-    /* The ramp is tuned so even --ink-4, used for labels and hints, stays
-       above 4.5:1 on the background. Quiet greys, still readable. */
     --ink-2:     #46474b;
-    --ink-3:     #5f6065;
-    --ink-4:     #74757a;
-    --line:      #e6e6e8;
-    --line-2:    #d2d2d6;
+    --ink-3:     #5f6065;   /* 6.3:1 */
+    --ink-4:     #74757a;   /* 4.6:1 - labels and hints */
+    --line:      #e2e2e5;
+    --line-2:    #cfcfd4;
     --invert-bg: #111113;
     --invert-ink:#ffffff;
-    --focus:     #111113;
+
+    /* One light source, top-left, everywhere. */
+    --lift:   0 1px 2px rgba(17,17,19,.07), 0 3px 10px rgba(17,17,19,.045);
+    --lift-2: 0 2px 4px rgba(17,17,19,.09), 0 8px 24px rgba(17,17,19,.06);
+    --edge:   inset 0 1px 0 rgba(255,255,255,.95);
+    --groove: inset 0 1px 2px rgba(17,17,19,.09), inset 0 0 0 1px rgba(17,17,19,.02);
+    --press:  inset 0 2px 4px rgba(17,17,19,.14);
   }
-  /* Deliberately light in every theme: white page, black ink, black buttons
-     with white text. To go back to following the system theme, restore the
-     prefers-color-scheme block that used to live here. */
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
-    background: var(--bg);
     color: var(--ink);
+    background: var(--page);
+    /* A whisper of paper grain. Any more and it stops being minimal. */
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
     font: 15px/1.6 ui-sans-serif, -apple-system, "Segoe UI", system-ui,
           Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.006em;
   }
 
-  .wrap { max-width: 940px; margin: 0 auto; padding: 0 24px 96px; }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 0 22px 90px; }
 
-  /* ---- masthead ---- */
+  /* ---- masthead: a fixed rail the page slides under ---- */
   header {
     position: sticky; top: 0; z-index: 20;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: saturate(1.4) blur(12px);
-    border-bottom: 1px solid var(--line);
-    margin-bottom: 40px;
+    background: linear-gradient(180deg, #fcfcfd, #f1f1f3);
+    border-bottom: 1px solid var(--line-2);
+    box-shadow: var(--edge), 0 1px 3px rgba(17,17,19,.06);
+    margin-bottom: 30px;
   }
   .head-in {
-    max-width: 940px; margin: 0 auto; padding: 18px 24px;
-    display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+    max-width: 1020px; margin: 0 auto; padding: 15px 22px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
   }
-  .brand { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .brand { font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; }
   .brand span { color: var(--ink-4); font-weight: 400; }
-  .src { font-size: 12.5px; color: var(--ink-3); }
-
-  /* ---- sections ---- */
-  section { padding: 34px 0; border-top: 1px solid var(--line); }
-  section:first-of-type { border-top: 0; padding-top: 0; }
-  h2 {
-    margin: 0 0 20px; font-size: 11px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: .11em; color: var(--ink-3);
+  .pill {
+    font-size: 11.5px; color: var(--ink-3); padding: 4px 11px;
+    border-radius: 999px; background: var(--sunk);
+    box-shadow: var(--groove); white-space: nowrap;
   }
-  .lede { margin: -12px 0 20px; font-size: 14px; color: var(--ink-3); max-width: 62ch; }
 
-  /* ---- status banner ---- */
+  /* ---- panels ---- */
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: var(--lift), var(--edge);
+    padding: 22px 24px; margin-bottom: 20px;
+  }
+  h2 {
+    margin: 0 0 18px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .11em; color: var(--ink-4);
+  }
+  .lede { margin: -10px 0 18px; font-size: 14px; color: var(--ink-3); max-width: 62ch; }
+
+  /* ---- layout ---- */
+  .split { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 880px) {
+    .split { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+    .split > .panel { margin-bottom: 0; }
+  }
+
+  /* ---- banner ---- */
   .banner {
-    border: 1px solid var(--line-2); border-left-width: 3px;
-    border-radius: 3px; padding: 13px 16px; margin-bottom: 34px;
-    font-size: 14px; color: var(--ink-2); background: var(--surface);
+    border: 1px solid var(--line-2); border-radius: 10px;
+    padding: 13px 17px; margin-bottom: 20px; font-size: 14px; color: var(--ink-2);
+    background: linear-gradient(180deg, #ffffff, #f6f6f7);
+    box-shadow: var(--lift), var(--edge);
   }
   .banner strong { color: var(--ink); font-weight: 600; }
-  .banner.loud { border-left-color: var(--ink); }
+  .banner.loud { border-left: 3px solid var(--ink); }
   .banner ul { margin: 7px 0 0; padding-left: 18px; }
-  .banner li { margin: 2px 0; }
 
-  /* ---- stats ---- */
+  /* ---- stats: engraved into one plate ---- */
   .stats {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: var(--lift), var(--edge);
+    overflow: hidden; margin-bottom: 20px;
   }
-  .stat { padding: 18px 20px; border-left: 1px solid var(--line); }
+  .stat { padding: 16px 20px; border-left: 1px solid var(--line); }
   .stat:first-child { border-left: 0; }
   .stat .n {
-    font-size: 30px; font-weight: 300; line-height: 1.1;
+    font-size: 29px; font-weight: 300; line-height: 1.1;
     letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
   }
-  .stat .n.sm { font-size: 14px; font-weight: 400; padding: 9px 0 7px; color: var(--ink-2); }
+  .stat .n.sm { font-size: 13.5px; font-weight: 400; padding: 8px 0 6px; color: var(--ink-2); }
   .stat .n.flag { font-weight: 500; }
   .stat .l {
-    margin-top: 7px; font-size: 10.5px; text-transform: uppercase;
+    margin-top: 6px; font-size: 10px; text-transform: uppercase;
     letter-spacing: .1em; color: var(--ink-4);
   }
 
-  /* ---- controls ---- */
+  /* ---- buttons: lit top edge, real press ---- */
   button {
     font: inherit; font-size: 13.5px; font-weight: 500;
-    padding: 8px 15px; border-radius: 4px;
-    border: 1px solid var(--line-2); background: transparent; color: var(--ink);
-    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+    padding: 8px 15px; border-radius: 7px; cursor: pointer;
+    color: var(--ink); border: 1px solid var(--line-2);
+    background: linear-gradient(180deg, #ffffff, #f0f0f2);
+    box-shadow: var(--edge), 0 1px 1.5px rgba(17,17,19,.10);
+    transition: box-shadow .1s, transform .06s, background .12s;
   }
-  button:hover { border-color: var(--ink-3); background: var(--surface); }
-  button:active { transform: translateY(.5px); }
+  button:hover { background: linear-gradient(180deg, #ffffff, #e9e9ec); }
+  button:active {
+    transform: translateY(1px);
+    box-shadow: var(--press);
+    background: #ececed;
+  }
   button.primary {
-    background: var(--invert-bg); border-color: var(--invert-bg);
-    color: var(--invert-ink);
+    color: var(--invert-ink); border-color: #000;
+    background: linear-gradient(180deg, #34343a, #111113);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 1px 2px rgba(17,17,19,.3);
   }
-  button.primary:hover { opacity: .84; background: var(--invert-bg); }
-  button.tiny { padding: 4px 9px; font-size: 12.5px; }
-  button.ghost { border-color: transparent; color: var(--ink-3); }
-  button.ghost:hover { color: var(--ink); border-color: var(--line-2); }
+  button.primary:hover { background: linear-gradient(180deg, #3d3d44, #17171a); }
+  button.primary:active {
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.5);
+    background: #0e0e10;
+  }
+  button.tiny { padding: 4px 10px; font-size: 12.5px; border-radius: 6px; }
+  button.ghost {
+    background: transparent; border-color: transparent; box-shadow: none;
+    color: var(--ink-3);
+  }
+  button.ghost:hover { color: var(--ink); background: var(--sunk); box-shadow: var(--groove); }
+  button.ghost:active { transform: translateY(1px); }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+  /* ---- inputs: recessed ---- */
   label {
-    display: block; font-size: 11px; font-weight: 500; text-transform: uppercase;
+    display: block; font-size: 10.5px; font-weight: 500; text-transform: uppercase;
     letter-spacing: .08em; color: var(--ink-4); margin-bottom: 6px;
   }
   input, select, textarea {
     font: inherit; font-size: 14px; width: 100%;
-    padding: 8px 11px; border-radius: 4px;
-    border: 1px solid var(--line-2); background: var(--bg); color: var(--ink);
-    transition: border-color .12s, box-shadow .12s;
+    padding: 8px 11px; border-radius: 7px; color: var(--ink);
+    border: 1px solid var(--line-2); background: var(--sunk);
+    box-shadow: var(--groove);
+    transition: box-shadow .12s, border-color .12s, background .12s;
   }
   input:focus, select:focus, textarea:focus {
-    outline: none; border-color: var(--focus);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 12%, transparent);
+    outline: none; background: #fff; border-color: var(--ink-3);
+    box-shadow: var(--groove), 0 0 0 3px rgba(17,17,19,.10);
   }
   input::placeholder, textarea::placeholder { color: var(--ink-4); }
   textarea { resize: vertical; line-height: 1.55; }
   .hint { margin: 6px 0 0; font-size: 12px; color: var(--ink-4); }
   .fields {
-    display: grid; gap: 16px 18px;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    display: grid; gap: 15px 16px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 
-  /* ---- list ---- */
-  .scroll { overflow-x: auto; margin: 0 -4px; }
+  /* ---- student list ---- */
+  .listbar {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
+    padding: 14px 16px; margin-bottom: 16px; border-radius: 9px;
+    background: var(--sunk); box-shadow: var(--groove);
+  }
+  .listbar > div { flex: 1 1 150px; }
+  .listbar input { background: #fff; }
+  .scroll { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th {
-    text-align: left; font-size: 10.5px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: .09em; color: var(--ink-4); padding: 0 4px 10px;
-    border-bottom: 1px solid var(--line);
+    text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--ink-4); padding: 0 6px 9px;
+    border-bottom: 1px solid var(--line-2);
   }
-  td { padding: 5px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-  tbody tr:hover td { background: var(--surface); }
-  /* Rows read as text until you touch them - the grid stays quiet. */
+  td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  /* Rows read as plain text until touched, then the groove appears. */
   td input {
-    border-color: transparent; background: transparent; padding: 6px 8px;
+    border-color: transparent; background: transparent;
+    box-shadow: none; padding: 6px 9px;
   }
-  tr:hover td input { border-color: var(--line); }
-  td input:focus { background: var(--bg); border-color: var(--focus); }
+  tbody tr:hover td { background: #fbfbfc; }
+  tbody tr:hover td input { border-color: var(--line); background: #fff; }
+  td input:focus { background: #fff; box-shadow: var(--groove), 0 0 0 3px rgba(17,17,19,.10); }
   .flag {
-    margin-top: 3px; font-size: 11.5px; color: var(--ink-2);
+    margin: 3px 0 0 9px; font-size: 11.5px; color: var(--ink-2);
     border-left: 2px solid var(--ink); padding-left: 7px;
   }
-  .empty { color: var(--ink-4); padding: 22px 4px; font-size: 14px; }
+  .empty { color: var(--ink-4); padding: 20px 6px; font-size: 14px; }
 
-  /* ---- upcoming ---- */
+  /* ---- coming up ---- */
   .up {
     display: flex; justify-content: space-between; align-items: baseline;
-    gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line);
-    font-size: 14px;
+    gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px;
   }
   .up:last-child { border-bottom: 0; }
   .up .when {
-    color: var(--ink-4); font-size: 12.5px; white-space: nowrap;
+    color: var(--ink-4); font-size: 12px; white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
-  .up .now { color: var(--ink); font-weight: 600; }
+  .up .now { font-weight: 600; }
 
-  /* ---- output ---- */
+  /* ---- output well ---- */
   pre#out {
-    background: var(--surface); color: var(--ink-2);
-    border: 1px solid var(--line); border-radius: 4px;
-    padding: 14px 16px; margin: 18px 0 0;
+    background: var(--sunk); color: var(--ink-2);
+    border: 1px solid var(--line-2); border-radius: 8px;
+    box-shadow: var(--groove);
+    padding: 13px 15px; margin: 16px 0 0;
     font: 12.5px/1.65 ui-monospace, "Cascadia Mono", Consolas, monospace;
-    white-space: pre-wrap; max-height: 300px; overflow: auto; display: none;
+    white-space: pre-wrap; max-height: 290px; overflow: auto; display: none;
   }
-  img#poster { max-width: 100%; border-radius: 4px; margin-top: 16px; display: none; }
+  img#poster {
+    max-width: 100%; border-radius: 8px; margin-top: 15px; display: none;
+    box-shadow: var(--lift-2);
+  }
   iframe#frame {
-    width: 100%; height: 540px; margin-top: 16px; display: none;
-    border: 1px solid var(--line); border-radius: 4px; background: #fff;
+    width: 100%; height: 520px; margin-top: 15px; display: none;
+    border: 1px solid var(--line-2); border-radius: 8px;
+    background: #fff; box-shadow: var(--lift-2);
   }
 
-  details { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; }
-  summary {
-    cursor: pointer; font-size: 13px; color: var(--ink-3); list-style: none;
-  }
+  details { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--ink-3); list-style: none; }
   summary::-webkit-details-marker { display: none; }
   summary::before { content: "+ "; color: var(--ink-4); }
   details[open] summary::before { content: "– "; }
   summary:hover { color: var(--ink); }
-  details p { font-size: 13.5px; color: var(--ink-3); max-width: 64ch; }
 
-  .danger-note { margin: 14px 0 0; font-size: 12.5px; color: var(--ink-3); }
+  .danger-note { margin: 13px 0 0; font-size: 12.5px; color: var(--ink-3); }
   .danger-note::before {
     content: ""; display: inline-block; width: 5px; height: 5px;
-    border-radius: 50%; background: var(--ink-3);
+    border-radius: 50%; background: var(--ink-3); box-shadow: var(--edge);
     margin-right: 8px; vertical-align: middle;
   }
 </style>
@@ -210,7 +260,7 @@
 <header>
   <div class="head-in">
     <div class="brand">Birthday Email System <span>· {{ settings.EMAIL_FROM_NAME or 'unnamed' }}</span></div>
-    <div class="src">{{ source }}</div>
+    <div class="pill">{{ source }}</div>
   </div>
 </header>
 
@@ -238,112 +288,74 @@
   {% endif %}
 
   <!-- ---------------------------------------------------------------- -->
-  <section>
-    <div class="stats">
-      <div class="stat">
-        <div class="n">{{ overview.total }}</div>
-        <div class="l">Students</div>
-      </div>
-      <div class="stat">
-        <div class="n">{{ overview.today|length }}</div>
-        <div class="l">Birthdays today</div>
-      </div>
-      <div class="stat">
-        <div class="n {% if overview.problems %}flag{% endif %}">{{ overview.problems }}</div>
-        <div class="l">Need fixing</div>
-      </div>
-      <div class="stat">
-        <div class="n sm">{% if overview.last_run %}{{ overview.last_run.when }}{% else %}Never{% endif %}</div>
-        <div class="l">Last sent</div>
-      </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="n">{{ overview.total }}</div><div class="l">Students</div>
     </div>
-  </section>
+    <div class="stat">
+      <div class="n">{{ overview.today|length }}</div><div class="l">Birthdays today</div>
+    </div>
+    <div class="stat">
+      <div class="n {% if overview.problems %}flag{% endif %}">{{ overview.problems }}</div>
+      <div class="l">Need fixing</div>
+    </div>
+    <div class="stat">
+      <div class="n sm">{% if overview.last_run %}{{ overview.last_run.when }}{% else %}Never{% endif %}</div>
+      <div class="l">Last sent</div>
+    </div>
+  </div>
 
-  <!-- ---------------------------------------------------------------- -->
-  <section>
-    <h2>Actions</h2>
-    <div class="row">
-      <button onclick="act('/action/check')">Check the list</button>
-      <button onclick="testRun()">Test run</button>
-      <button onclick="previewPoster()">Preview greeting</button>
-      <button class="primary" onclick="sendReal()">Send today's wishes</button>
-    </div>
-    <pre id="out"></pre>
-    <img id="poster" alt="greeting preview">
-    <iframe id="frame" title="greeting preview"></iframe>
-  </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  {% if overview.today or overview.upcoming %}
-  <section>
-    <h2>Coming up</h2>
-    {% for name in overview.today %}
-      <div class="up"><span class="now">{{ name }}</span><span class="when">Today</span></div>
-    {% endfor %}
-    {% for u in overview.upcoming %}
-      <div class="up">
-        <span>{{ u.name }}</span>
-        <span class="when">{{ u.date }} · {{ u.days }} day{{ '' if u.days == 1 else 's' }}</span>
+  <!-- ---- work on the left, what's coming on the right ---- -->
+  <div class="split" style="margin-bottom:20px;">
+    <div class="panel">
+      <h2>Actions</h2>
+      <div class="row">
+        <button onclick="act('/action/check')">Check the list</button>
+        <button onclick="testRun()">Test run</button>
+        <button onclick="previewPoster()">Preview greeting</button>
+        <button class="primary" onclick="sendReal()">Send today's wishes</button>
       </div>
-    {% endfor %}
-  </section>
-  {% endif %}
+      <pre id="out"></pre>
+      <img id="poster" alt="greeting preview">
+      <iframe id="frame" title="greeting preview"></iframe>
+    </div>
 
-  <!-- ---------------------------------------------------------------- -->
-  <section>
-    <h2>Wish anyone</h2>
-    <p class="lede">
-      Send a greeting to any address right now, whether or not they are on the
-      list and whatever today's date is.
-    </p>
-    <div class="fields">
-      <div>
-        <label>Email address</label>
-        <input id="w-email" placeholder="friend@example.com">
-        <p class="hint">Several at once? Separate with commas.</p>
-      </div>
-      <div>
-        <label>Name to show</label>
-        <input id="w-name" placeholder="blank = guessed from the address">
-        <p class="hint">One name per address, same order.</p>
-      </div>
+    <div class="panel">
+      <h2>Coming up</h2>
+      {% if overview.today or overview.upcoming %}
+        {% for name in overview.today %}
+          <div class="up"><span class="now">{{ name }}</span><span class="when">Today</span></div>
+        {% endfor %}
+        {% for u in overview.upcoming %}
+          <div class="up">
+            <span>{{ u.name }}</span>
+            <span class="when">{{ u.date }} · {{ u.days }}d</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="hint" style="margin:0;">No birthdays in the next 60 days.</p>
+      {% endif %}
     </div>
-    <div style="margin-top:16px;">
-      <label>Your own message</label>
-      <textarea id="w-note" rows="3"
-        placeholder="Leave blank for the standard birthday wording."></textarea>
-    </div>
-    <div class="row" style="margin-top:16px;">
-      <button onclick="wishAnyone(true)">Preview</button>
-      <button class="primary" onclick="wishAnyone(false)">Send now</button>
-    </div>
-    <p class="danger-note">
-      The test-address safety net does not apply here — you named the
-      recipient, so this reaches them.
-    </p>
-  </section>
+  </div>
 
-  <!-- ---------------------------------------------------------------- -->
-  <section>
-    <h2>Add a student</h2>
+  <!-- ---- add and list, one place ---- -->
+  <div class="panel">
+    <h2>Students · {{ students|length }}</h2>
+
     <form method="post" action="/students/add">
-      <div class="fields">
+      <div class="listbar">
         <div><label>Full name</label>
           <input name="name" required placeholder="Asha Kulkarni"></div>
         <div><label>Email</label>
           <input name="email" type="email" required placeholder="asha@gcoerc.edu"></div>
-        <div><label>Date of birth</label>
+        <div style="flex:0 1 170px;"><label>Date of birth</label>
           <input name="dob" type="date" required></div>
-        <div style="display:flex;align-items:flex-end;">
-          <button class="primary" type="submit" style="width:100%;">Add student</button>
+        <div style="flex:0 0 auto;">
+          <button class="primary" type="submit">Add</button>
         </div>
       </div>
     </form>
-  </section>
 
-  <!-- ---------------------------------------------------------------- -->
-  <section>
-    <h2>Students · {{ students|length }}</h2>
     <div class="scroll">
     <table>
       <thead>
@@ -377,10 +389,44 @@
       </tbody>
     </table>
     </div>
-  </section>
+  </div>
 
   <!-- ---------------------------------------------------------------- -->
-  <section>
+  <div class="panel">
+    <h2>Wish anyone</h2>
+    <p class="lede">
+      Send a greeting to any address right now, whether or not they are on the
+      list and whatever today's date is.
+    </p>
+    <div class="fields">
+      <div>
+        <label>Email address</label>
+        <input id="w-email" placeholder="friend@example.com">
+        <p class="hint">Several at once? Separate with commas.</p>
+      </div>
+      <div>
+        <label>Name to show</label>
+        <input id="w-name" placeholder="blank = guessed from the address">
+        <p class="hint">One name per address, same order.</p>
+      </div>
+    </div>
+    <div style="margin-top:15px;">
+      <label>Your own message</label>
+      <textarea id="w-note" rows="3"
+        placeholder="Leave blank for the standard birthday wording."></textarea>
+    </div>
+    <div class="row" style="margin-top:15px;">
+      <button onclick="wishAnyone(true)">Preview</button>
+      <button class="primary" onclick="wishAnyone(false)">Send now</button>
+    </div>
+    <p class="danger-note">
+      The test-address safety net does not apply here — you named the
+      recipient, so this reaches them.
+    </p>
+  </div>
+
+  <!-- ---------------------------------------------------------------- -->
+  <div class="panel">
     <h2>Settings</h2>
     <form method="post" action="/settings">
       <div class="fields">
@@ -418,21 +464,17 @@
           <div><label>SMTP port</label>
             <input name="SMTP_PORT" value="{{ settings.SMTP_PORT }}"></div>
         </div>
-        <p class="hint" style="margin-top:14px;">
-          Set once and rarely touched. Changing SMTP details only matters if
-          you move off Gmail.
-        </p>
       </details>
 
-      <div class="row" style="margin-top:22px;">
+      <div class="row" style="margin-top:20px;">
         <button class="primary" type="submit">Save settings</button>
       </div>
     </form>
-    <p class="hint" style="margin-top:16px;">
+    <p class="hint" style="margin-top:15px;">
       App password: on the sending Google account turn on 2-Step Verification,
       then Google Account → Security → App passwords.
     </p>
-  </section>
+  </div>
 
 </div>
 
