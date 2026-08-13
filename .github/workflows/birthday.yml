@@ -84,18 +84,28 @@ jobs:
           fi
           python -m src.main $ARGS
 
-      - name: Remember who was wished
+      - name: Record that the run happened
         # Pushing the log back is what stops a second run of the same day
         # from wishing everyone twice.
         if: always() && github.event.inputs.dry_run != 'true'
             && github.event.inputs.check_login != 'true'
         run: |
-          if [ -f logs/sent_log.csv ] && ! git diff --quiet -- logs/sent_log.csv; then
-            git config user.name  "birthday-bot"
-            git config user.email "actions@github.com"
-            git add logs/sent_log.csv
-            git commit -m "Birthday wishes sent $(date -u +%Y-%m-%d)"
-            git push
+          # Pushing the sent log back is what stops a second run of the same
+          # day from wishing everyone twice.
+          #
+          # last_run.txt is written on EVERY run, birthdays or not. That keeps
+          # the repository active: GitHub switches scheduled workflows off
+          # after 60 days of inactivity, and a roster with few birthdays would
+          # otherwise go quiet long enough to trip it.
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > logs/last_run.txt
+
+          git config user.name  "birthday-bot"
+          git config user.email "actions@github.com"
+          git add logs/last_run.txt logs/sent_log.csv
+
+          if git diff --cached --quiet; then
+            echo "Nothing to record."
           else
-            echo "Nothing new to record."
+            git commit -m "Birthday run $(date -u +%Y-%m-%d)"
+            git push
           fi

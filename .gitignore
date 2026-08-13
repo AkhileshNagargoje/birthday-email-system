@@ -14,6 +14,7 @@ venv/
 # what stops a re-run from wishing everyone twice). Everything else is local.
 logs/*
 !logs/sent_log.csv
+!logs/last_run.txt
 
 # NOTE: data/students.csv IS committed, so the scheduled run can read it.
 # Keep the repository PRIVATE - that file holds student names, emails and
