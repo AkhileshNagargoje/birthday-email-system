@@ -9,12 +9,39 @@ import re
 import shutil
 from datetime import datetime
 
-from . import config, students as roster
+from . import config, gitstore, students as roster
 
 CANONICAL = ["Full Name", "Email Address", "Date of Birth"]
 
+# Path inside the repository, used only when the GitHub backend is on.
+REPO_PATH = "data/students.csv"
+
+
+def _repo_path():
+    """Where the roster lives in the repo, derived from SOURCE_PATH."""
+    try:
+        return config.SOURCE_PATH.relative_to(config.ROOT).as_posix()
+    except ValueError:
+        return REPO_PATH
+
+
+def _sync_down():
+    """Pulls the roster from GitHub onto local disk.
+
+    The action buttons shell out to src.main, which reads the file, so the
+    local copy has to exist even when GitHub is the real store.
+    """
+    if not gitstore.enabled():
+        return
+    text, _ = gitstore.fetch(_repo_path())
+    if text is None:
+        return
+    config.SOURCE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    config.SOURCE_PATH.write_text(text, encoding="utf-8")
+
 
 def _read_raw():
+    _sync_down()
     path = config.SOURCE_PATH
     if not path.exists():
         return [], list(CANONICAL)
@@ -33,7 +60,7 @@ def _columns(fields):
     )
 
 
-def _write(rows, fields):
+def _write(rows, fields, what="Update students"):
     path = config.SOURCE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
@@ -44,6 +71,12 @@ def _write(rows, fields):
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
+
+    if gitstore.enabled():
+        # Commit it back, otherwise the edit dies with the next restart.
+        gitstore.put(_repo_path(),
+                     path.read_text(encoding="utf-8"),
+                     f"{what} (via dashboard)")
 
 
 def list_students():

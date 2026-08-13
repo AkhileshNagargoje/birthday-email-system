@@ -1,0 +1,1 @@
+{"root":["./web/src/api/client.ts","./web/src/app.tsx","./web/src/main.tsx","./web/src/components/actionspanel.tsx","./web/src/components/login.tsx","./web/src/components/stats.tsx","./web/src/components/studentlist.tsx","./web/src/components/upcoming.tsx","./web/src/components/wishanyone.tsx","./shared/dates.ts","./shared/types.ts","./vite.config.ts"],"version":"5.9.3"}
