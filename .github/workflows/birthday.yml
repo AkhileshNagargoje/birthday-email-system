@@ -87,8 +87,9 @@ jobs:
       - name: Record that the run happened
         # Pushing the log back is what stops a second run of the same day
         # from wishing everyone twice.
-        if: always() && github.event.inputs.dry_run != 'true'
-            && github.event.inputs.check_login != 'true'
+        # Runs on dry runs too: a dry run writes no sent-log entries, so only
+        # the timestamp changes, and it proves the push-back path works.
+        if: always() && github.event.inputs.check_login != 'true'
         run: |
           # Pushing the sent log back is what stops a second run of the same
           # day from wishing everyone twice.
