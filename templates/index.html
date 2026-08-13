@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Birthday Email System</title>
+<style>
+  :root {
+    --bg: #f6f7f9;      --card: #ffffff;   --ink: #1c1f23;
+    --muted: #6b7280;   --line: #e5e7eb;   --accent: #4f46e5;
+    --good: #15803d;    --warn: #b45309;   --bad: #b91c1c;
+    --good-bg: #ecfdf5; --warn-bg: #fffbeb; --bad-bg: #fef2f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;      --card: #1c1f25;   --ink: #e8eaed;
+      --muted: #9aa1ac;   --line: #2c313a;   --accent: #818cf8;
+      --good: #4ade80;    --warn: #fbbf24;   --bad: #f87171;
+      --good-bg: #0f2a1d; --warn-bg: #2a2110; --bad-bg: #2a1414;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 20px 60px; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 2px; }
+  h2 { font-size: 15px; margin: 0 0 14px; letter-spacing: .02em;
+       text-transform: uppercase; color: var(--muted); }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--line);
+          border-radius: 10px; padding: 20px 22px; margin-bottom: 18px; }
+
+  .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .stat { background: var(--card); border: 1px solid var(--line);
+          border-radius: 10px; padding: 14px 16px; }
+  .stat .n { font-size: 26px; font-weight: 650; }
+  .stat .l { font-size: 12px; color: var(--muted); text-transform: uppercase;
+             letter-spacing: .04em; }
+
+  .note { border-radius: 8px; padding: 11px 14px; margin-bottom: 16px; font-size: 14px; }
+  .note.good { background: var(--good-bg); color: var(--good); }
+  .note.warn { background: var(--warn-bg); color: var(--warn); }
+  .note.bad  { background: var(--bad-bg);  color: var(--bad); }
+  .note ul { margin: 6px 0 0; padding-left: 20px; }
+
+  button, .btn {
+    font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger  { color: var(--bad); }
+  button.tiny { padding: 5px 9px; font-size: 13px; }
+  .row { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+
+  input, select {
+    font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+    width: 100%;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .grid2 { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 12px; text-transform: uppercase;
+       letter-spacing: .04em; color: var(--muted); font-weight: 600;
+       padding: 0 8px 8px; }
+  td { padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: middle; }
+  .scroll { overflow-x: auto; }
+  .flag { font-size: 12px; color: var(--bad); }
+
+  pre#out {
+    background: #0e1116; color: #d7dce3; border-radius: 8px; padding: 14px 16px;
+    font: 13px/1.5 Consolas, "SF Mono", Menlo, monospace; white-space: pre-wrap;
+    max-height: 320px; overflow: auto; margin: 14px 0 0; display: none;
+  }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 14px; }
+  .up { display: flex; justify-content: space-between; padding: 5px 0;
+        border-bottom: 1px solid var(--line); font-size: 14px; }
+  .up:last-child { border-bottom: 0; }
+  .up span:last-child { color: var(--muted); font-size: 13px; }
+  img#poster { max-width: 100%; border-radius: 8px; margin-top: 12px; display: none; }
+  iframe#frame { width: 100%; height: 520px; border: 1px solid var(--line);
+                 border-radius: 8px; margin-top: 12px; display: none;
+                 background: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Birthday Email System</h1>
+  <p class="sub">Reading students from <strong>{{ source }}</strong></p>
+
+  {% if message %}<div class="note good">{{ message }}</div>{% endif %}
+  {% if error %}<div class="note bad">{{ error }}</div>{% endif %}
+
+  {% if blockers %}
+  <div class="note warn">
+    <strong>Not ready to send yet:</strong>
+    <ul>{% for b in blockers %}<li>{{ b }}</li>{% endfor %}</ul>
+  </div>
+  {% elif test_mode %}
+  <div class="note warn">
+    <strong>Test mode.</strong> Every wish goes to
+    {{ settings.TEST_EMAIL }} instead of to students. Clear TEST_EMAIL in
+    Settings when you are ready to go live.
+  </div>
+  {% else %}
+  <div class="note good"><strong>Live.</strong> Wishes will go to real students.</div>
+  {% endif %}
+
+  {% if overview.error %}
+  <div class="note bad">Could not read the student list: {{ overview.error }}</div>
+  {% endif %}
+
+  <!-- ---------------------------------------------------------------- -->
+  <div class="stats" style="margin-bottom:18px;">
+    <div class="stat"><div class="n">{{ overview.total }}</div><div class="l">Students</div></div>
+    <div class="stat"><div class="n">{{ overview.today|length }}</div><div class="l">Birthdays today</div></div>
+    <div class="stat">
+      <div class="n" {% if overview.problems %}style="color:var(--bad)"{% endif %}>{{ overview.problems }}</div>
+      <div class="l">Rows with problems</div>
+    </div>
+    <div class="stat">
+      <div class="n" style="font-size:15px;padding-top:8px;">
+        {% if overview.last_run %}{{ overview.last_run.when }}{% else %}never{% endif %}
+      </div>
+      <div class="l">Last sent</div>
+    </div>
+  </div>
+
+  <!-- ---------------------------------------------------------------- -->
+  <div class="card">
+    <h2>Actions</h2>
+    <div class="row">
+      <button onclick="act('/action/check')">Check the list</button>
+      <button onclick="testRun()">Test run (sends nothing)</button>
+      <button onclick="previewPoster()">Preview poster</button>
+      <button onclick="act('/action/template')">Rebuild template</button>
+      <button class="primary" onclick="sendReal()">Send today's wishes</button>
+    </div>
+    <pre id="out"></pre>
+    <img id="poster" alt="greeting preview">
+    <iframe id="frame" title="greeting preview"></iframe>
+  </div>
+
+  <!-- ---------------------------------------------------------------- -->
+  <div class="card">
+    <h2>Wish anyone</h2>
+    <p style="margin:-6px 0 16px;font-size:14px;color:var(--muted);">
+      Send a birthday wish to any address right now, whether or not they are on
+      the student list and whatever today's date is.
+    </p>
+    <div class="grid2">
+      <div>
+        <label>Email address</label>
+        <input id="w-email" placeholder="friend@example.com">
+        <p style="margin:5px 0 0;font-size:12px;color:var(--muted);">
+          Several at once? Separate them with commas.
+        </p>
+      </div>
+      <div>
+        <label>Name for the poster</label>
+        <input id="w-name" placeholder="left blank = guessed from the address">
+        <p style="margin:5px 0 0;font-size:12px;color:var(--muted);">
+          One name per address, in the same order.
+        </p>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <label>Your own message (optional)</label>
+      <textarea id="w-note" rows="3"
+        placeholder="Leave blank for the standard birthday wording."
+        style="font:inherit;font-size:14px;padding:8px 10px;border-radius:7px;
+               border:1px solid var(--line);background:var(--bg);color:var(--ink);
+               width:100%;resize:vertical;"></textarea>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button onclick="wishAnyone(true)">Preview it first</button>
+      <button class="primary" onclick="wishAnyone(false)">Send now</button>
+    </div>
+    <p style="margin:12px 0 0;font-size:13px;color:var(--warn);">
+      The test-address safety net does not apply here - you named the recipient,
+      so this goes to them.
+    </p>
+  </div>
+
+  <!-- ---------------------------------------------------------------- -->
+  {% if overview.today or overview.upcoming %}
+  <div class="card">
+    <h2>Coming up</h2>
+    {% for name in overview.today %}
+      <div class="up"><span><strong>{{ name }}</strong></span><span>today</span></div>
+    {% endfor %}
+    {% for u in overview.upcoming %}
+      <div class="up"><span>{{ u.name }}</span><span>{{ u.date }} &middot; in {{ u.days }} day{{ '' if u.days == 1 else 's' }}</span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ---------------------------------------------------------------- -->
+  <div class="card">
+    <h2>Add a student</h2>
+    <form method="post" action="/students/add">
+      <div class="grid2">
+        <div><label>Full name</label><input name="name" required placeholder="Asha Kulkarni"></div>
+        <div><label>Email</label><input name="email" type="email" required placeholder="asha@college.edu"></div>
+        <div><label>Date of birth</label><input name="dob" type="date" required></div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="primary" type="submit" style="width:100%;">Add</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ---------------------------------------------------------------- -->
+  <div class="card">
+    <h2>Students ({{ students|length }})</h2>
+    <div class="scroll">
+    <table>
+      <thead>
+        <tr><th style="width:30%">Name</th><th style="width:34%">Email</th>
+            <th style="width:20%">Birthday</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for s in students %}
+        <tr>
+          <form method="post" action="/students/update">
+            <input type="hidden" name="index" value="{{ s.index }}">
+            <td><input name="name" value="{{ s.name }}"></td>
+            <td><input name="email" value="{{ s.email }}"></td>
+            <td>
+              <input name="dob" type="{{ 'date' if s.problem != 'date not understood' and s.dob|length == 10 else 'text' }}" value="{{ s.dob }}">
+              {% if s.problem %}<div class="flag">{{ s.problem }}</div>{% endif %}
+            </td>
+            <td style="white-space:nowrap;">
+              <button class="tiny" type="submit">Save</button>
+          </form>
+              <form method="post" action="/students/delete" style="display:inline"
+                    onsubmit="return confirm('Remove {{ s.name|e }} from the list?')">
+                <input type="hidden" name="index" value="{{ s.index }}">
+                <button class="tiny danger" type="submit">Delete</button>
+              </form>
+            </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" style="color:var(--muted);padding:16px 8px;">
+          Nobody on the list yet. Add someone above.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- ---------------------------------------------------------------- -->
+  <div class="card">
+    <h2>Settings</h2>
+    <form method="post" action="/settings">
+      <div class="grid2">
+        <div><label>Sending address</label>
+          <input name="EMAIL_USER" value="{{ settings.EMAIL_USER }}"></div>
+        <div><label>App password</label>
+          <input name="EMAIL_PASS" type="password" value="{{ settings.EMAIL_PASS }}"></div>
+        <div><label>Name students see</label>
+          <input name="EMAIL_FROM_NAME" value="{{ settings.EMAIL_FROM_NAME }}"></div>
+        <div><label>Replies go to</label>
+          <input name="REPLY_TO" value="{{ settings.REPLY_TO }}"></div>
+        <div><label>Test address (safety net)</label>
+          <input name="TEST_EMAIL" value="{{ settings.TEST_EMAIL }}"
+                 placeholder="blank = send to real students"></div>
+        <div><label>Daily report to</label>
+          <input name="REPORT_EMAIL" value="{{ settings.REPORT_EMAIL }}"
+                 placeholder="your address"></div>
+        <div><label>Report even on quiet days</label>
+          <select name="REPORT_ALWAYS">
+            <option value="yes" {% if settings.REPORT_ALWAYS != 'no' %}selected{% endif %}>Yes</option>
+            <option value="no"  {% if settings.REPORT_ALWAYS == 'no' %}selected{% endif %}>No</option>
+          </select></div>
+        <div><label>Greeting style</label>
+          <select name="POSTER_MODE">
+            <option value="html" {% if settings.POSTER_MODE != 'image' %}selected{% endif %}>
+              HTML banner (shows even if images are blocked)</option>
+            <option value="image" {% if settings.POSTER_MODE == 'image' %}selected{% endif %}>
+              Image poster (from assets/template.png)</option>
+          </select></div>
+        <div><label>SMTP server</label>
+          <input name="SMTP_HOST" value="{{ settings.SMTP_HOST }}"></div>
+        <div><label>SMTP port</label>
+          <input name="SMTP_PORT" value="{{ settings.SMTP_PORT }}"></div>
+      </div>
+      <div class="row" style="margin-top:16px;">
+        <button class="primary" type="submit">Save settings</button>
+      </div>
+    </form>
+    <details>
+      <summary>Where do I get an app password?</summary>
+      <p style="font-size:14px;color:var(--muted);">
+        On the sending Google account: turn on 2-Step Verification, then
+        Google Account &rarr; Security &rarr; App passwords. It gives you a
+        16-character code. That code goes in the field above, not your normal
+        password.
+      </p>
+    </details>
+  </div>
+
+</div>
+
+<script>
+const out = document.getElementById('out');
+const poster = document.getElementById('poster');
+const frame = document.getElementById('frame');
+
+function show(text) { out.style.display = 'block'; out.textContent = text; }
+
+function hidePreview() {
+  poster.style.display = 'none';
+  frame.style.display = 'none';
+}
+
+function showPreview(kind, url) {
+  const src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+  if (kind === 'image') {
+    poster.src = src; poster.style.display = 'block'; frame.style.display = 'none';
+  } else {
+    frame.src = src; frame.style.display = 'block'; poster.style.display = 'none';
+  }
+}
+
+async function post(url, body) {
+  show('Working...');
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body || {})
+    });
+    const data = await res.json();
+    show(data.output);
+    return data;
+  } catch (err) {
+    show('Something went wrong: ' + err);
+    return null;
+  }
+}
+
+function act(url) { hidePreview(); return post(url); }
+
+function testRun() {
+  hidePreview();
+  const when = prompt('Pretend it is which date? (YYYY-MM-DD, or leave blank for today)', '');
+  if (when === null) return;
+  post('/action/test', {date: when});
+}
+
+async function previewPoster() {
+  const name = prompt('Whose name should the greeting show?', 'Student Name');
+  if (name === null) return;
+  hidePreview();
+  const data = await post('/action/preview', {name: name});
+  if (data && data.ok && data.url) showPreview(data.kind, data.url);
+}
+
+async function wishAnyone(dry) {
+  hidePreview();
+  const email = document.getElementById('w-email').value.trim();
+  const name  = document.getElementById('w-name').value.trim();
+  const note  = document.getElementById('w-note').value.trim();
+
+  if (!email) { show('Type an email address first.'); return; }
+
+  // One click to confirm, no typing. You already typed the address.
+  if (!dry) {
+    const who = email.split(',').filter(s => s.trim()).length;
+    if (!confirm('Send a birthday email now to ' + who + ' recipient(s)?\n\n' +
+                 email + '\n\nThis cannot be undone.')) {
+      show('Cancelled. Nothing was sent.');
+      return;
+    }
+  }
+
+  const data = await post('/action/wish',
+    {email: email, name: name, note: note, dry: dry, confirm: dry ? '' : 'SEND'});
+
+  // On a preview, also render what the first recipient would actually see.
+  if (dry && data && data.ok) {
+    const who = name.split(',')[0].trim() ||
+                email.split(',')[0].trim().split('@')[0];
+    const p = await post('/action/preview', {name: who});
+    if (p && p.ok && p.url) { show(data.output); showPreview(p.kind, p.url); }
+  }
+}
+
+function sendReal() {
+  poster.style.display = 'none';
+  const answer = prompt(
+    'This sends real email to real students, right now, and cannot be undone.\n\n' +
+    'Type SEND to continue.');
+  if (answer !== 'SEND') { show('Cancelled. Nothing was sent.'); return; }
+  post('/action/send', {confirm: 'SEND'});
+}
+</script>
+</body>
+</html>

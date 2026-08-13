@@ -1,0 +1,22 @@
+# Secrets - never commit these
+.env
+credentials.json
+
+# Local working files
+out/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.bak
+
+# Logs: the sent log IS committed (GitHub Actions pushes it back, and it is
+# what stops a re-run from wishing everyone twice). Everything else is local.
+logs/*
+!logs/sent_log.csv
+
+# NOTE: data/students.csv IS committed, so the scheduled run can read it.
+# Keep the repository PRIVATE - that file holds student names, emails and
+# dates of birth.
+data/*.bak
+data/students.xlsx

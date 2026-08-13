@@ -1,0 +1,84 @@
+name: Birthday wishes
+
+on:
+  schedule:
+    # 02:30 UTC = 08:00 IST. GitHub's cron can drift 5-30 minutes late,
+    # which does not matter for a birthday wish.
+    - cron: '30 2 * * *'
+
+  # Lets you run it by hand from the Actions tab.
+  workflow_dispatch:
+    inputs:
+      pretend_date:
+        description: 'Run as if today were this date (YYYY-MM-DD). Blank = today.'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Test only - send nothing'
+        type: boolean
+        default: false
+
+# Needed so the run can push the updated sent log back.
+permissions:
+  contents: write
+
+jobs:
+  wish:
+    runs-on: ubuntu-latest
+
+    env:
+      EMAIL_USER: ${{ secrets.EMAIL_USER }}
+      EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+      EMAIL_FROM_NAME: ${{ vars.EMAIL_FROM_NAME }}
+      REPLY_TO: ${{ vars.REPLY_TO }}
+      REPORT_EMAIL: ${{ vars.REPORT_EMAIL }}
+      REPORT_ALWAYS: ${{ vars.REPORT_ALWAYS }}
+      TEST_EMAIL: ${{ vars.TEST_EMAIL }}
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT }}
+      POSTER_MODE: ${{ vars.POSTER_MODE }}
+      SOURCE_TYPE: csv
+      SOURCE_PATH: data/students.csv
+      # No .env file exists in the repo, so these environment values are what
+      # the script reads. That keeps the password out of the codebase.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        # Only what the send needs - the dashboard is not used here.
+        run: pip install --quiet Pillow python-dotenv openpyxl
+
+      - name: Check the roster before sending
+        run: python -m src.main --validate
+        continue-on-error: true
+
+      - name: Send birthday wishes
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.pretend_date }}" ]; then
+            ARGS="$ARGS --date ${{ github.event.inputs.pretend_date }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python -m src.main $ARGS
+
+      - name: Remember who was wished
+        # Pushing the log back is what stops a second run of the same day
+        # from wishing everyone twice.
+        if: always() && github.event.inputs.dry_run != 'true'
+        run: |
+          if [ -f logs/sent_log.csv ] && ! git diff --quiet -- logs/sent_log.csv; then
+            git config user.name  "birthday-bot"
+            git config user.email "actions@github.com"
+            git add logs/sent_log.csv
+            git commit -m "Birthday wishes sent $(date -u +%Y-%m-%d)"
+            git push
+          else
+            echo "Nothing new to record."
+          fi

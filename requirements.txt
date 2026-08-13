@@ -1,0 +1,13 @@
+# Core (required)
+Pillow>=10.0.0
+python-dotenv>=1.0.0
+
+# Dashboard (Dashboard.bat)
+Flask>=3.0.0
+
+# Optional: read students from an .xlsx file
+openpyxl>=3.1.0
+
+# Optional: read students live from a Google Sheet
+# gspread>=6.0.0
+# google-auth>=2.30.0
