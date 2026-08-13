@@ -8,6 +8,7 @@
  */
 
 import type { Env } from "../env";
+import { sendMail, SmtpError, type SmtpConfig } from "./smtp";
 
 export interface OutgoingEmail {
   to: string;
@@ -96,6 +97,39 @@ class CloudflareProvider implements EmailProvider {
   }
 }
 
+/**
+ * Gmail (or any SMTP server) over raw TCP. The same path the Python version
+ * used: your own account, an app password, nothing in between.
+ */
+class SmtpProvider implements EmailProvider {
+  readonly name = "smtp";
+
+  constructor(
+    private config: SmtpConfig,
+    private fromEmail: string,
+    private fromName: string,
+    private replyTo: string,
+  ) {}
+
+  async send(message: OutgoingEmail): Promise<void> {
+    try {
+      await sendMail(this.config, {
+        fromEmail: this.fromEmail,
+        fromName: this.fromName,
+        replyTo: this.replyTo,
+        to: message.to,
+        subject: message.subject,
+        html: message.html,
+        text: message.text,
+      });
+    } catch (err) {
+      const smtp = err as SmtpError;
+      // 4xx is a temporary server condition; 5xx means do not bother retrying.
+      throw new EmailError(smtp.message, smtp.code ? smtp.code < 500 : false);
+    }
+  }
+}
+
 /** Used by dry runs - records what would have gone out. */
 export class NoopProvider implements EmailProvider {
   readonly name = "dry-run";
@@ -105,6 +139,32 @@ export class NoopProvider implements EmailProvider {
 export function makeProvider(env: Env): EmailProvider {
   const from = env.SEND_FROM_EMAIL;
   const name = env.SEND_FROM_NAME || env.APP_NAME;
+  const replyTo = env.REPLY_TO || env.REPORT_EMAIL || from;
+
+  if (env.EMAIL_PROVIDER === "smtp") {
+    if (!env.SMTP_USER || !env.SMTP_PASS) {
+      throw new EmailError(
+        "SMTP_USER and SMTP_PASS are not set. Add them with: " +
+          "wrangler secret put SMTP_USER   (and SMTP_PASS)",
+      );
+    }
+    const port = Number(env.SMTP_PORT || 465);
+    if (port === 25) {
+      throw new EmailError(
+        "Cloudflare blocks outbound port 25. Use 465 (recommended) or 587.",
+      );
+    }
+    const config: SmtpConfig = {
+      host: env.SMTP_HOST || "smtp.gmail.com",
+      port,
+      username: env.SMTP_USER,
+      password: env.SMTP_PASS,
+      // Must be a domain that actually resolves - it goes in the EHLO
+      // greeting and the Message-ID, both of which filters check.
+      domain: env.MAIL_DOMAIN || "akhileshnagargoje.in",
+    };
+    return new SmtpProvider(config, from, name, replyTo);
+  }
 
   if (env.EMAIL_PROVIDER === "cloudflare") {
     if (!env.EMAIL) {
@@ -122,5 +182,5 @@ export function makeProvider(env: Env): EmailProvider {
       "BREVO_API_KEY is not set. Add it with: wrangler secret put BREVO_API_KEY",
     );
   }
-  return new BrevoProvider(env.BREVO_API_KEY, from, name, env.REPORT_EMAIL || from);
+  return new BrevoProvider(env.BREVO_API_KEY, from, name, replyTo);
 }

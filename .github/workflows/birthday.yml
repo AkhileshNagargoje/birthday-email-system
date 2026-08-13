@@ -35,6 +35,10 @@ on:
         description: 'Name to show on that greeting'
         required: false
         default: ''
+      wish_note:
+        description: 'Your own message instead of the standard wording'
+        required: false
+        default: ''
 
 # Needed so the run can push the updated sent log back.
 permissions:
@@ -77,12 +81,17 @@ jobs:
 
       - name: Send a single one-off wish
         if: github.event.inputs.check_login != 'true' && github.event.inputs.wish_email != ''
+        # Inputs come through the environment, not shell interpolation, so a
+        # note containing quotes cannot break (or become) the command line.
+        env:
+          WISH_EMAIL: ${{ github.event.inputs.wish_email }}
+          WISH_NAME: ${{ github.event.inputs.wish_name }}
+          WISH_NOTE: ${{ github.event.inputs.wish_note }}
         run: |
-          ARGS="--wish ${{ github.event.inputs.wish_email }}"
-          if [ -n "${{ github.event.inputs.wish_name }}" ]; then
-            ARGS="$ARGS --wish-name '${{ github.event.inputs.wish_name }}'"
-          fi
-          eval python -m src.main $ARGS
+          set -- --wish "$WISH_EMAIL"
+          if [ -n "$WISH_NAME" ]; then set -- "$@" --wish-name "$WISH_NAME"; fi
+          if [ -n "$WISH_NOTE" ]; then set -- "$@" --wish-note "$WISH_NOTE"; fi
+          python -m src.main "$@"
 
       - name: Check the roster before sending
         if: github.event.inputs.check_login != 'true' && github.event.inputs.wish_email == ''

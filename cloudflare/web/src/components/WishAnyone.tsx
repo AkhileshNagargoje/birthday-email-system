@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../api/client";
+import { api, isQueued } from "../api/client";
 
 export default function WishAnyone() {
   const [emails, setEmails] = useState("");
@@ -35,9 +35,11 @@ export default function WishAnyone() {
     try {
       const result = await api.wish({ emails, names, note, dryRun });
       setOutput(
-        result.entries
-          .map((e) => `  ${e.status.padEnd(8)} ${e.name} -> ${e.detail}`)
-          .join("\n") + `\n\nsent=${result.sent} failed=${result.failed}`,
+        isQueued(result)
+          ? `${result.message}\n\nWatch it run: ${result.actionsUrl}`
+          : result.entries
+              .map((e) => `  ${e.status.padEnd(8)} ${e.name} -> ${e.detail}`)
+              .join("\n") + `\n\nsent=${result.sent} failed=${result.failed}`,
       );
 
       if (dryRun) {
@@ -108,8 +110,8 @@ export default function WishAnyone() {
       </div>
 
       <p className="note-line">
-        The test-address safety net does not apply here — you named the recipient, so
-        this reaches them.
+        Sends run on GitHub Actions. The test-address safety net does not apply
+        here — you named the recipient, so this reaches them.
       </p>
 
       {output && <pre className="out">{output}</pre>}
