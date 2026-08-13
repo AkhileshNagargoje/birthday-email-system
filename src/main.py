@@ -48,6 +48,9 @@ def parse_args(argv=None):
                         "With several addresses, give one name each, comma separated.")
     p.add_argument("--wish-note", metavar="TEXT",
                    help="Your own message instead of the standard wording.")
+    p.add_argument("--check-login", action="store_true",
+                   help="Log in to the mail server and disconnect. Proves the "
+                        "address and password work, without sending anything.")
     p.add_argument("--force", action="store_true",
                    help="Send even if the sent log says it already went out.")
     p.add_argument("--save-posters", action="store_true",
@@ -86,6 +89,29 @@ def show_upcoming(students, today, days):
             found = True
     if not found:
         print("  (nobody)")
+
+
+def check_login():
+    """Connects, authenticates, hangs up. Sends nothing, logs nothing."""
+    print(f"Connecting to {config.SMTP_HOST}:{config.SMTP_PORT} as "
+          f"{config.EMAIL_USER or '(not set)'} ...")
+    mailer = Mailer(dry_run=False)
+    try:
+        mailer.connect()
+    except RuntimeError as exc:
+        print(f"\n{exc}", file=sys.stderr)
+        return 1
+    except smtplib.SMTPAuthenticationError as exc:
+        print(f"\nLogin REJECTED by the server: {exc}\n"
+              f"The address or the app password is wrong. Generate a fresh app "
+              f"password and set it again.", file=sys.stderr)
+        return 1
+    except (smtplib.SMTPException, OSError) as exc:
+        print(f"\nCould not reach the server: {exc}", file=sys.stderr)
+        return 1
+    mailer.close()
+    print("Login OK - the account can send mail.")
+    return 0
 
 
 def preview_greeting(name, stem="preview"):
@@ -191,6 +217,9 @@ def send_one_off(args, today):
 def run(argv=None):
     args = parse_args(argv)
     today = resolve_today(args.date)
+
+    if args.check_login:
+        return check_login()
 
     if args.wish:
         return send_one_off(args, today)
