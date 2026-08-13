@@ -19,6 +19,10 @@ from . import config, sent_log, store, students as roster
 
 app = Flask(__name__, template_folder="../templates", static_folder=None)
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+# Without this, Flask compiles the template once and edits to it are ignored
+# until the process restarts.
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.jinja_env.auto_reload = True
 
 HOST = "127.0.0.1"
 PORT = 5000
