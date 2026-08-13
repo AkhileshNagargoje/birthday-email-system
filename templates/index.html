@@ -260,7 +260,14 @@
 <header>
   <div class="head-in">
     <div class="brand">Birthday Email System <span>· {{ settings.EMAIL_FROM_NAME or 'unnamed' }}</span></div>
-    <div class="pill">{{ source }}</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="pill">{{ source }}</div>
+      {% if signed_in %}
+      <form method="post" action="/logout" style="margin:0;">
+        <button class="ghost" type="submit">Sign out</button>
+      </form>
+      {% endif %}
+    </div>
   </div>
 </header>
 

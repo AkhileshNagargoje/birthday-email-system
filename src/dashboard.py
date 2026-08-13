@@ -1,11 +1,17 @@
-"""A small local dashboard. Runs on your machine only, in your browser.
+"""The dashboard. Two lives, one codebase.
 
-    python -m src.dashboard      (or double-click Dashboard.bat)
+Locally (python -m src.dashboard, or Dashboard.bat): no login, reads and
+writes the CSV on disk, sends through the local CLI. Exactly as before.
 
-Actions are run as subprocesses so that a settings change takes effect
-immediately, without restarting the dashboard.
+Hosted (Render): set DASH_USER + DASH_PASS and it grows a login; set
+GITHUB_TOKEN + GITHUB_REPO and the repository becomes the store - roster
+edits are committed back, and real sends are dispatched to the GitHub
+Actions workflow instead of leaving this host (whose datacenter IP Gmail
+does not trust the way it trusts GitHub's runners).
 """
 
+import os
+import secrets
 import subprocess
 import sys
 import webbrowser
@@ -13,9 +19,10 @@ from datetime import date, timedelta
 from pathlib import Path
 from threading import Timer
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import (Flask, jsonify, redirect, render_template, request,
+                   session, url_for)
 
-from . import config, sent_log, store, students as roster
+from . import config, gitstore, sent_log, store, students as roster
 
 app = Flask(__name__, template_folder="../templates", static_folder=None)
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
@@ -26,6 +33,58 @@ app.jinja_env.auto_reload = True
 
 HOST = "127.0.0.1"
 PORT = 5000
+
+# A fixed key keeps logins across restarts; the random fallback is fine
+# locally, where there is no login to keep.
+app.secret_key = os.getenv("FLASK_SECRET") or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=bool(os.getenv("RENDER")),
+)
+
+DASH_USER = os.getenv("DASH_USER", "").strip()
+DASH_PASS = os.getenv("DASH_PASS", "").strip()
+
+
+def auth_enabled():
+    return bool(DASH_USER and DASH_PASS)
+
+
+@app.before_request
+def require_login():
+    if not auth_enabled():
+        return None  # local use - open, as it always was
+    if request.endpoint in ("login", "do_login"):
+        return None
+    if session.get("user") == DASH_USER:
+        return None
+    if request.method == "POST" or request.path.startswith("/action/"):
+        return jsonify(ok=False, output="Signed out - reload the page."), 401
+    return redirect(url_for("login"))
+
+
+@app.get("/login")
+def login():
+    if session.get("user") == DASH_USER:
+        return redirect(url_for("index"))
+    return render_template("login.html", error=None)
+
+
+@app.post("/login")
+def do_login():
+    ok = (secrets.compare_digest(request.form.get("username", ""), DASH_USER)
+          and secrets.compare_digest(request.form.get("password", ""), DASH_PASS))
+    if not ok:
+        return render_template("login.html", error="Wrong username or password."), 401
+    session["user"] = DASH_USER
+    return redirect(url_for("index"))
+
+
+@app.post("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +154,14 @@ def _last_run():
 
 def _ready_to_send():
     """What still needs doing before real wishes can go out."""
-    blockers = []
     settings = store.read_settings()
+
+    # Hosted: sending happens on GitHub's runners with GitHub's secrets, so
+    # local mail credentials are not what gates a send - the token is.
+    if gitstore.enabled():
+        return [], settings
+
+    blockers = []
     if not settings.get("EMAIL_USER") or settings["EMAIL_USER"] == "you@example.com":
         blockers.append("No sending address set in Settings.")
     if not settings.get("EMAIL_PASS") or settings["EMAIL_PASS"].startswith("xxxx"):
@@ -112,6 +177,9 @@ def _ready_to_send():
 
 @app.route("/")
 def index():
+    # In hosted mode the repository is the truth - pull it before rendering,
+    # so an edit made on github.com five minutes ago is what you see here.
+    store.sync()
     blockers, settings = _ready_to_send()
     return render_template(
         "index.html",
@@ -120,7 +188,8 @@ def index():
         settings=settings,
         blockers=blockers,
         test_mode=bool(settings.get("TEST_EMAIL")),
-        source=config.SOURCE_PATH.name,
+        source=gitstore.describe() if gitstore.enabled() else config.SOURCE_PATH.name,
+        signed_in=auth_enabled(),
         message=request.args.get("msg"),
         error=request.args.get("err"),
     )
@@ -210,6 +279,17 @@ def action_send():
     blockers, _ = _ready_to_send()
     if blockers:
         return jsonify(ok=False, output="Cannot send yet:\n  " + "\n  ".join(blockers)), 400
+
+    # Hosted: the send runs on GitHub's runners - the path Gmail trusts.
+    if gitstore.enabled():
+        try:
+            url = gitstore.dispatch_workflow({})
+            return jsonify(ok=True, output=(
+                "Queued on GitHub Actions - delivery takes about a minute.\n"
+                f"Watch it run: {url}"))
+        except Exception as exc:
+            return jsonify(ok=False, output=str(exc)), 502
+
     code, output = _run_cli()
     return jsonify(ok=code == 0, output=output)
 
@@ -232,13 +312,29 @@ def action_wish():
             return jsonify(ok=False,
                            output="Cannot send yet:\n  " + "\n  ".join(blockers)), 400
 
+    note = (data.get("note") or "").strip()
+
+    # Hosted, real send: dispatch the workflow rather than sending from here.
+    if not dry and gitstore.enabled():
+        try:
+            inputs = {"wish_email": address}
+            if name:
+                inputs["wish_name"] = name
+            if note:
+                inputs["wish_note"] = note
+            url = gitstore.dispatch_workflow(inputs)
+            return jsonify(ok=True, output=(
+                "Queued on GitHub Actions - delivery takes about a minute.\n"
+                f"Watch it run: {url}"))
+        except Exception as exc:
+            return jsonify(ok=False, output=str(exc)), 502
+
     args = ["--wish", address]
     if name:
         args += ["--wish-name", name]
-    note = (data.get("note") or "").strip()
     if note:
         args += ["--wish-note", note]
-    if data.get("dry"):
+    if dry:
         args.append("--dry-run")
     code, output = _run_cli(*args)
     return jsonify(ok=code == 0, output=output)

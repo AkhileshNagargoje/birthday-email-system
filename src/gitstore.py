@@ -36,7 +36,9 @@ def _request(method, url, payload=None):
     if data:
         req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req, timeout=20) as resp:
-        return json.loads(resp.read().decode())
+        body = resp.read().decode()
+        # A workflow dispatch answers 204 with no body.
+        return json.loads(body) if body else None
 
 
 def fetch(path):
@@ -70,3 +72,22 @@ def describe():
     if not enabled():
         return "local file"
     return f"{REPO} · {BRANCH}"
+
+
+WORKFLOW = os.getenv("GITHUB_WORKFLOW_FILE", "birthday.yml").strip()
+
+
+def dispatch_workflow(inputs):
+    """Fires the sending workflow on GitHub Actions.
+
+    Real sends go through the workflow rather than out of this host: the
+    runners are the submission path Gmail trusts (a rented datacenter IP is
+    not), and it keeps every send in the one committed sent-log.
+    """
+    url = f"{API}/repos/{REPO}/actions/workflows/{WORKFLOW}/dispatches"
+    try:
+        _request("POST", url, {"ref": BRANCH, "inputs": inputs})
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode(errors="replace")[:300]
+        raise RuntimeError(f"GitHub refused the dispatch ({exc.code}): {detail}") from exc
+    return f"https://github.com/{REPO}/actions"
