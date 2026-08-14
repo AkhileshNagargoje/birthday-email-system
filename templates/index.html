@@ -213,6 +213,25 @@
   }
   .empty { color: var(--ink-4); padding: 20px 6px; font-size: 14px; }
 
+  /* ---- roster toolbar and pager ---- */
+  .toolbar {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .toolbar #q { flex: 1 1 220px; }
+  .toolbar select { flex: 0 0 auto; width: auto; }
+  .pager {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+  }
+  /* Rows are read-only text until you choose to edit one, so the list reads
+     as a list rather than a wall of form fields. */
+  tbody td.cell { color: var(--ink); }
+  tbody td.muted { color: var(--ink-3); }
+  tr.editing td { background: var(--sunk); }
+  .row-actions { white-space: nowrap; text-align: right; }
+  mark { background: #ffe9a8; color: inherit; padding: 0 1px; border-radius: 2px; }
+
   /* Status marker. Monochrome like everything else: filled means good,
      hollow means it wants a look. */
   .dot {
@@ -398,38 +417,59 @@
       </div>
     </form>
 
+    <!-- The roster as data. Filtering, sorting and paging happen here in the
+         page: a few hundred rows is nothing for the browser, and it means no
+         round-trip to type in the search box. -->
+    <script type="application/json" id="roster">{{ students|tojson }}</script>
+
+    <!-- One edit form for the whole table, shown when you click Edit. The old
+         version rendered a form per row, which meant 1,000 forms and 2,500
+         inputs at 500 students. -->
+    <form method="post" action="/students/update" id="editForm" hidden>
+      <div class="listbar" style="background:#fff;box-shadow:var(--lift),var(--edge);">
+        <input type="hidden" name="index" id="editIndex">
+        <div><label>Full name</label><input name="name" id="editName" required></div>
+        <div><label>Email</label><input name="email" id="editEmail" type="email" required></div>
+        <div style="flex:0 1 170px;"><label>Date of birth</label>
+          <input name="dob" id="editDob" required></div>
+        <div style="flex:0 0 auto;display:flex;gap:8px;">
+          <button class="primary" type="submit">Save</button>
+          <button type="button" class="ghost" onclick="cancelEdit()">Cancel</button>
+        </div>
+      </div>
+    </form>
+
+    <form method="post" action="/students/delete" id="deleteForm" hidden>
+      <input type="hidden" name="index" id="deleteIndex">
+    </form>
+
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Search name or email…"
+             autocomplete="off" aria-label="Search students">
+      <select id="sortBy" aria-label="Sort by">
+        <option value="name">Name A–Z</option>
+        <option value="name-desc">Name Z–A</option>
+        <option value="soonest">Birthday soonest</option>
+        <option value="month">Birthday by date</option>
+        <option value="problem">Needs fixing first</option>
+      </select>
+      <span id="count" class="hint" style="margin:0;white-space:nowrap;"></span>
+    </div>
+
     <div class="scroll">
-    <table>
-      <thead>
-        <tr><th style="width:30%">Name</th><th style="width:34%">Email</th>
-            <th style="width:22%">Birthday</th><th></th></tr>
-      </thead>
-      <tbody>
-      {% for s in students %}
-        <tr>
-          <form method="post" action="/students/update">
-            <input type="hidden" name="index" value="{{ s.index }}">
-            <td><input name="name" value="{{ s.name }}"></td>
-            <td><input name="email" value="{{ s.email }}"></td>
-            <td>
-              <input name="dob" type="{{ 'date' if s.problem != 'date not understood' and s.dob|length == 10 else 'text' }}" value="{{ s.dob }}">
-              {% if s.problem %}<div class="flag">{{ s.problem }}</div>{% endif %}
-            </td>
-            <td style="white-space:nowrap;text-align:right;">
-              <button class="tiny" type="submit">Save</button>
-          </form>
-              <form method="post" action="/students/delete" style="display:inline"
-                    onsubmit="return confirm('Remove {{ s.name|e }} from the list?')">
-                <input type="hidden" name="index" value="{{ s.index }}">
-                <button class="tiny ghost" type="submit">Delete</button>
-              </form>
-            </td>
-        </tr>
-      {% else %}
-        <tr><td colspan="4" class="empty">Nobody on the list yet.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+      <table>
+        <thead>
+          <tr><th style="width:28%">Name</th><th style="width:34%">Email</th>
+              <th style="width:20%">Birthday</th><th></th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <div class="pager" id="pager" hidden>
+      <button class="tiny" type="button" id="prev">Previous</button>
+      <span class="hint" style="margin:0;" id="pageLabel"></span>
+      <button class="tiny" type="button" id="next">Next</button>
     </div>
   </div>
 
@@ -630,6 +670,164 @@ async function post(url, body) {
     return null;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The roster table.
+
+   All the data is already in the page, so search and sort are instant and
+   nothing round-trips to the server. Only one page of rows exists in the DOM
+   at a time, which is what keeps 500 students as light as 20.
+   --------------------------------------------------------------------------- */
+const ROSTER = JSON.parse(document.getElementById('roster').textContent || '[]');
+const PAGE_SIZE = 25;
+
+let page = 0;
+let editingIndex = null;
+
+const rowsEl = document.getElementById('rows');
+const qEl = document.getElementById('q');
+const sortEl = document.getElementById('sortBy');
+const countEl = document.getElementById('count');
+const pagerEl = document.getElementById('pager');
+const pageLabel = document.getElementById('pageLabel');
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"]/g,
+  (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+/** Highlights the matched text so you can see why a row survived the filter. */
+function highlight(text, term) {
+  const safe = escapeHtml(text);
+  if (!term) return safe;
+  const i = safe.toLowerCase().indexOf(term.toLowerCase());
+  if (i < 0) return safe;
+  return safe.slice(0, i) + '<mark>' + safe.slice(i, i + term.length) +
+         '</mark>' + safe.slice(i + term.length);
+}
+
+/** Days until the next occurrence of a birthday, for the "soonest" sort. */
+function daysAway(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  if (!m) return 9999;
+  const today = new Date();
+  const year = today.getFullYear();
+  let next = new Date(year, +m[2] - 1, +m[3]);
+  const midnight = new Date(year, today.getMonth(), today.getDate());
+  if (next < midnight) next = new Date(year + 1, +m[2] - 1, +m[3]);
+  return Math.round((next - midnight) / 86400000);
+}
+
+function visibleRows() {
+  const term = qEl.value.trim().toLowerCase();
+  let list = ROSTER.filter((s) =>
+    !term ||
+    (s.name || '').toLowerCase().includes(term) ||
+    (s.email || '').toLowerCase().includes(term));
+
+  const by = sortEl.value;
+  const byName = (a, b) => (a.name || '').localeCompare(b.name || '', undefined, {sensitivity: 'base'});
+  if (by === 'name') list.sort(byName);
+  else if (by === 'name-desc') list.sort((a, b) => byName(b, a));
+  else if (by === 'soonest') list.sort((a, b) => daysAway(a.dob) - daysAway(b.dob) || byName(a, b));
+  else if (by === 'month') list.sort((a, b) => (a.dob || '').slice(5).localeCompare((b.dob || '').slice(5)) || byName(a, b));
+  else if (by === 'problem') list.sort((a, b) => (b.problem ? 1 : 0) - (a.problem ? 1 : 0) || byName(a, b));
+  return list;
+}
+
+function render() {
+  const list = visibleRows();
+  const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  if (page >= pages) page = pages - 1;
+  if (page < 0) page = 0;
+
+  const slice = list.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const term = qEl.value.trim();
+
+  if (!ROSTER.length) {
+    rowsEl.innerHTML = '<tr><td colspan="4" class="empty">Nobody on the list yet.</td></tr>';
+  } else if (!list.length) {
+    rowsEl.innerHTML = `<tr><td colspan="4" class="empty">No student matches “${escapeHtml(term)}”.</td></tr>`;
+  } else {
+    rowsEl.innerHTML = slice.map((s) => {
+      const soon = daysAway(s.dob);
+      const when = s.problem
+        ? `<span class="flag" style="border:0;padding:0;margin:0;">${escapeHtml(s.dob)} — ${escapeHtml(s.problem)}</span>`
+        : escapeHtml(s.dob_display || s.dob) +
+          (soon === 0 ? ' <strong>· today</strong>' : soon <= 14 ? ` <span class="hint" style="display:inline">· ${soon}d</span>` : '');
+      return `<tr data-index="${s.index}">
+        <td class="cell">${highlight(s.name, term)}</td>
+        <td class="muted">${highlight(s.email, term)}</td>
+        <td class="muted">${when}</td>
+        <td class="row-actions">
+          <button class="tiny" type="button" data-edit="${s.index}">Edit</button>
+          <button class="tiny ghost" type="button" data-del="${s.index}">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  const shown = list.length;
+  countEl.textContent = shown === ROSTER.length
+    ? `${ROSTER.length} student${ROSTER.length === 1 ? '' : 's'}`
+    : `${shown} of ${ROSTER.length}`;
+
+  pagerEl.hidden = pages <= 1;
+  pageLabel.textContent = `Page ${page + 1} of ${pages}`;
+  document.getElementById('prev').disabled = page === 0;
+  document.getElementById('next').disabled = page >= pages - 1;
+}
+
+function startEdit(index) {
+  const s = ROSTER.find((r) => String(r.index) === String(index));
+  if (!s) return;
+  editingIndex = index;
+  document.getElementById('editIndex').value = s.index;
+  document.getElementById('editName').value = s.name || '';
+  document.getElementById('editEmail').value = s.email || '';
+  const dob = document.getElementById('editDob');
+  // A date picker only works with a well-formed value; fall back to text so a
+  // bad row can still be corrected rather than silently blanked.
+  const usable = /^\d{4}-\d{2}-\d{2}$/.test(s.dob || '');
+  dob.type = usable ? 'date' : 'text';
+  dob.value = s.dob || '';
+
+  const form = document.getElementById('editForm');
+  form.hidden = false;
+  form.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  document.getElementById('editName').focus();
+  markEditingRow();
+}
+
+function cancelEdit() {
+  editingIndex = null;
+  document.getElementById('editForm').hidden = true;
+  markEditingRow();
+}
+
+function markEditingRow() {
+  rowsEl.querySelectorAll('tr').forEach((tr) =>
+    tr.classList.toggle('editing', tr.dataset.index === String(editingIndex)));
+}
+
+rowsEl.addEventListener('click', (event) => {
+  const edit = event.target.closest('[data-edit]');
+  if (edit) return startEdit(edit.dataset.edit);
+
+  const del = event.target.closest('[data-del]');
+  if (del) {
+    const s = ROSTER.find((r) => String(r.index) === String(del.dataset.del));
+    if (!s) return;
+    if (!confirm(`Remove ${s.name} from the list?`)) return;
+    document.getElementById('deleteIndex').value = s.index;
+    document.getElementById('deleteForm').submit();
+  }
+});
+
+qEl.addEventListener('input', () => { page = 0; render(); });
+sortEl.addEventListener('change', () => { page = 0; render(); });
+document.getElementById('prev').addEventListener('click', () => { page--; render(); });
+document.getElementById('next').addEventListener('click', () => { page++; render(); });
+
+render();
 
 function act(url) { hidePreview(); return post(url); }
 
