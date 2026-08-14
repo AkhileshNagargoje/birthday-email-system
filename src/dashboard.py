@@ -11,11 +11,12 @@ does not trust the way it trusts GitHub's runners).
 """
 
 import os
+import re
 import secrets
 import subprocess
 import sys
 import webbrowser
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Timer
 
@@ -152,6 +153,70 @@ def _last_run():
     }
 
 
+CRON_RE = re.compile(r"^\s*-\s*cron:\s*['\"](\d+)\s+(\d+)\s", re.M)
+
+
+def _cron_slots():
+    """The (hour, minute) UTC slots this workflow is scheduled for."""
+    path = config.ROOT / ".github" / "workflows" / "birthday.yml"
+    if not path.exists():
+        return []
+    return [(int(h), int(m)) for m, h in CRON_RE.findall(path.read_text(encoding="utf-8"))]
+
+
+def _runs_with_slip():
+    """Recent runs, each with how far past its scheduled slot it actually ran.
+
+    GitHub's free-tier cron routinely drifts an hour or more, and the API does
+    not say which trigger fired - so match each run to the most recent slot
+    before it. Knowing the delay is the difference between "broken" and
+    "late", which cost us most of a morning to work out by hand.
+    """
+    runs = gitstore.recent_runs(limit=6)
+    if not runs:
+        return []
+
+    slots = _cron_slots()
+    try:
+        from zoneinfo import ZoneInfo
+        local = ZoneInfo(config.TIMEZONE)
+    except Exception:
+        local = None
+
+    out = []
+    for run in runs:
+        started = run.get("started")
+        if not started:
+            continue
+        when = datetime.strptime(started, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc)
+
+        slip = None
+        if run.get("event") == "schedule" and slots:
+            candidates = []
+            for day_offset in (0, -1):
+                day = (when + timedelta(days=day_offset)).date()
+                for hour, minute in slots:
+                    slot = datetime(day.year, day.month, day.day, hour, minute,
+                                    tzinfo=timezone.utc)
+                    if slot <= when:
+                        candidates.append(slot)
+            if candidates:
+                minutes = int((when - max(candidates)).total_seconds() // 60)
+                slip = f"{minutes // 60}h {minutes % 60:02d}m" if minutes >= 60 else f"{minutes}m"
+
+        shown = when.astimezone(local) if local else when
+        out.append({
+            "when": shown.strftime("%d %b, %H:%M"),
+            "event": "scheduled" if run.get("event") == "schedule" else "manual",
+            "ok": run.get("conclusion") == "success",
+            "conclusion": run.get("conclusion") or run.get("status") or "running",
+            "slip": slip,
+            "url": run.get("url"),
+        })
+    return out
+
+
 def _ready_to_send():
     """What still needs doing before real wishes can go out."""
     settings = store.read_settings()
@@ -190,6 +255,9 @@ def index():
         test_mode=bool(settings.get("TEST_EMAIL")),
         source=gitstore.describe() if gitstore.enabled() else config.SOURCE_PATH.name,
         signed_in=auth_enabled(),
+        history=sent_log.history(limit=25),
+        sent_summary=sent_log.summary(),
+        runs=_runs_with_slip(),
         message=request.args.get("msg"),
         error=request.args.get("err"),
     )
