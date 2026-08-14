@@ -1,0 +1,51 @@
+name: Test send
+
+# A throwaway workflow for checking delivery to specific addresses.
+#
+# Deliberately separate from birthday.yml: it does not read the roster, does
+# not touch the sent log, and cannot interfere with the real daily send. Delete
+# this file once delivery is confirmed.
+
+on:
+  schedule:
+    # 07:30 UTC = 13:00 IST. GitHub's free-tier cron drifts, sometimes by more
+    # than an hour, so treat this as "early afternoon" rather than 13:00 sharp.
+    - cron: '30 7 * * *'
+
+  # Also runnable on demand, which fires immediately instead of waiting.
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+
+    env:
+      EMAIL_USER: ${{ secrets.EMAIL_USER }}
+      EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+      EMAIL_FROM_NAME: ${{ vars.EMAIL_FROM_NAME }}
+      REPLY_TO: ${{ vars.REPLY_TO }}
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT }}
+      POSTER_MODE: ${{ vars.POSTER_MODE }}
+      # No REPORT_EMAIL: a one-off wish sends no run report, and the workflow
+      # log already says what happened.
+      SOURCE_TYPE: csv
+      SOURCE_PATH: data/students.csv
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install --quiet Pillow python-dotenv openpyxl
+
+      - name: Send the test greetings
+        # --wish takes a comma-separated list and pairs it with the names in
+        # the same order. It ignores the roster and today's date entirely.
+        run: |
+          python -m src.main \
+            --wish "akhileshnagargoje@gmail.com,thevengeance415@gmail.com,xboom047@gmail.com" \
+            --wish-name "Akhilesh,Vengeance,Boom"
