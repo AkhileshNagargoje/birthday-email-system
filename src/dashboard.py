@@ -107,7 +107,7 @@ def _run_cli(*cli_args, timeout=300):
 
 
 def _overview():
-    today = date.today()
+    today = config.today()
     try:
         students, bad = roster.load_students()
     except Exception as exc:

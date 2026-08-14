@@ -60,7 +60,7 @@ def parse_args(argv=None):
 
 def resolve_today(value):
     if not value:
-        return date.today()
+        return config.today()
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
@@ -123,7 +123,7 @@ def preview_greeting(name, stem="preview"):
         return poster.save_poster(name, config.OUT_DIR / f"{stem}.png")
 
     student = roster.Student(name=name, email="preview@example.com",
-                             dob=date.today())
+                             dob=config.today())
     path = config.OUT_DIR / f"{stem}.html"
     path.write_text(message.html(student, None), encoding="utf-8")
     return path
