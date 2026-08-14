@@ -7,13 +7,26 @@ name: Test send
 # this file once delivery is confirmed.
 
 on:
-  schedule:
-    # 07:30 UTC = 13:00 IST. GitHub's free-tier cron drifts, sometimes by more
-    # than an hour, so treat this as "early afternoon" rather than 13:00 sharp.
-    - cron: '30 7 * * *'
-
-  # Also runnable on demand, which fires immediately instead of waiting.
+  # On demand only.
+  #
+  # This job has no date check and no duplicate guard - it sends every time it
+  # runs. On a daily cron that meant three people receiving "Happy Birthday"
+  # every afternoon forever, which is the fastest way to teach Gmail that this
+  # sender is spam. So: press the button when you want a test.
+  #
+  # To put it back on a schedule, restore:
+  #   schedule:
+  #     - cron: '30 7 * * *'   # 07:30 UTC = 13:00 IST
   workflow_dispatch:
+    inputs:
+      recipients:
+        description: 'Addresses, comma separated. Blank = the usual three.'
+        required: false
+        default: ''
+      names:
+        description: 'Names, comma separated, in the same order.'
+        required: false
+        default: ''
 
 jobs:
   send:
@@ -45,7 +58,25 @@ jobs:
       - name: Send the test greetings
         # --wish takes a comma-separated list and pairs it with the names in
         # the same order. It ignores the roster and today's date entirely.
+        # Inputs come through the environment so an address or name containing
+        # quotes cannot break - or become - the command line.
+        env:
+          RECIPIENTS: ${{ github.event.inputs.recipients }}
+          NAMES: ${{ github.event.inputs.names }}
         run: |
-          python -m src.main \
-            --wish "akhileshnagargoje@gmail.com,thevengeance415@gmail.com,xboom047@gmail.com" \
-            --wish-name "Akhilesh,Vengeance,Boom"
+          DEFAULT_TO="akhileshnagargoje@gmail.com,thevengeance415@gmail.com,xboom047@gmail.com"
+          DEFAULT_NAMES="Akhilesh,Vengeance,Boom"
+
+          TO="${RECIPIENTS:-$DEFAULT_TO}"
+          # Only pair the default names with the default addresses.
+          if [ -n "$NAMES" ]; then
+            WHO="$NAMES"
+          elif [ -z "$RECIPIENTS" ]; then
+            WHO="$DEFAULT_NAMES"
+          else
+            WHO=""
+          fi
+
+          set -- --wish "$TO"
+          if [ -n "$WHO" ]; then set -- "$@" --wish-name "$WHO"; fi
+          python -m src.main "$@"
