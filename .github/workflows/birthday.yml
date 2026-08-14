@@ -10,9 +10,21 @@ on:
   #   1. comment out the two lines below
   #   2. schtasks /change /tn "Birthday Email System" /enable
   schedule:
-    # GitHub's free-tier cron drifts - the 14 Aug run fired 1h50m late. Times
-    # on the hour and half-hour are the most contended, so this sits at :07.
-    - cron: '7 2 * * *'    # 02:07 UTC = 07:37 IST
+    # Wishes go out at midnight IST - the moment the birthday starts.
+    #
+    # GitHub's free-tier cron drifts badly (the 14 Aug run was 1h51m late), so
+    # rather than one hopeful trigger there are four. The first one GitHub
+    # actually runs does the sending; the rest find today's entries already in
+    # the sent log and skip everyone. The duplicate guard is what makes this
+    # safe - nobody is wished twice.
+    #
+    # Note the UTC offset: midnight IST is 18:30 UTC the PREVIOUS day. The
+    # script resolves "today" in Asia/Kolkata (config.today()), not from the
+    # runner's UTC clock, so it still matches the right date.
+    - cron: '30 18 * * *'  # 18:30 UTC = 00:00 IST  <- intended time
+    - cron: '31 19 * * *'  # 19:31 UTC = 01:01 IST  <- if the first was late
+    - cron: '32 20 * * *'  # 20:32 UTC = 02:02 IST
+    - cron: '7 2 * * *'    # 02:07 UTC = 07:37 IST  <- last-resort morning net
     # TEMPORARY test trigger. Delete this line once the send is confirmed.
     - cron: '45 6 * * *'   # 06:45 UTC = 12:15 IST
 
@@ -65,6 +77,10 @@ jobs:
       POSTER_MODE: ${{ vars.POSTER_MODE }}
       SOURCE_TYPE: csv
       SOURCE_PATH: data/students.csv
+      # Belt and braces: the code resolves dates in this zone anyway, but this
+      # also makes log timestamps read in IST rather than UTC.
+      TZ: Asia/Kolkata
+      TIMEZONE: Asia/Kolkata
       # No .env file exists in the repo, so these environment values are what
       # the script reads. That keeps the password out of the codebase.
 

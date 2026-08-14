@@ -32,6 +32,12 @@ SMTP_PORT = int(_get("SMTP_PORT", "587") or 587)
 
 # ---- Safety ----------------------------------------------------------------
 TEST_EMAIL = _get("TEST_EMAIL")
+
+# ---- Time ------------------------------------------------------------------
+# "Today" means today HERE, not on whatever machine happens to run this.
+# GitHub's runners are UTC, so a midnight-IST send would otherwise look up
+# yesterday's birthdays and quietly wish nobody.
+TIMEZONE = _get("TIMEZONE", "Asia/Kolkata")
 SEND_DELAY_SECONDS = float(_get("SEND_DELAY_SECONDS", "2") or 0)
 
 # ---- Reporting -------------------------------------------------------------
@@ -60,6 +66,19 @@ POSTER_FONT = _path("POSTER_FONT", "assets/font.ttf")
 LOG_DIR = ROOT / "logs"
 SENT_LOG = LOG_DIR / "sent_log.csv"
 OUT_DIR = ROOT / "out"
+
+
+def today():
+    """The current date in TIMEZONE, whatever the machine's clock is set to."""
+    from datetime import datetime
+
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(TIMEZONE)).date()
+    except Exception:
+        # No tz database (bare Windows without tzdata): fall back to the
+        # machine's own date rather than failing outright.
+        return datetime.now().date()
 
 
 def missing_mail_settings():
