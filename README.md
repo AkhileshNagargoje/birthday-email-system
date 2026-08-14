@@ -1,213 +1,212 @@
-# Birthday Email System
+# Birthday Email System — GCOERC
 
-Runs once a day, finds every student whose birthday is today, generates a
-personalised poster with their name on it, and emails it to them.
+Emails every student a personalised birthday greeting, automatically, at
+midnight on their birthday.
 
----
-
-## Easiest way: double-click `Dashboard.bat`
-
-Opens a dashboard in your browser. Everything is there:
-
-- **Status** — how many students, whose birthday is today, how many rows have
-  bad data, when it last sent
-- **Coming up** — the next birthdays
-- **Add a student** — name, email, a date picker
-- **Students** — the whole list, editable in place, with a Save and Delete on
-  each row. Bad rows are flagged in red.
-- **Settings** — sending address, app password, test address, daily report
-- **Actions** — check the list, test run, preview a poster, send today's wishes
-
-The **Send today's wishes** button makes you type `SEND` first, and refuses
-entirely until the sending account is configured.
-
-Keep the black window open while you use it; closing it stops the dashboard.
-Nothing is exposed to the internet — it runs on your machine only.
+**Nothing needs to be switched on.** The sending runs on GitHub's servers.
+Your PC, the dashboard, and everything else can be off.
 
 ---
 
-## Or the text menu: `Start.bat`
-
-No commands to remember either. It opens a menu:
+## How it fits together
 
 ```
-  SETUP
-    1  Edit the student list
-    2  Edit settings (email account)
-    3  Check the student list for mistakes
-
-  TRY IT OUT  (nothing is sent)
-    4  Preview a poster
-    5  Test run - today
-    6  Test run - pick a date
-    7  Show upcoming birthdays
-
-  FOR REAL
-    8  Send today's wishes now
-    9  Turn ON automatic daily sending
-   10  Turn OFF automatic daily sending
-   11  See what was sent recently
+data/students.csv  ──►  GitHub Actions (cron)  ──►  Gmail SMTP  ──►  student
+     the roster            the sender                              inbox
+          ▲                      │
+          │                      └──►  logs/sent_log.csv  (committed back:
+          │                             stops anyone being wished twice)
+          │
+   edited via: the dashboard, github.com, or locally + push
 ```
 
-Option 9 registers the daily task for you, so after that it runs by itself and
-you never open this again.
+Two places run the code, and they do different jobs:
 
-The rest of this file documents the command-line equivalents.
+| | Where | Job |
+|---|---|---|
+| **The sender** | GitHub Actions | The daily job. This is the only thing that sends. |
+| **The dashboard** | Render (hosted) or your PC | Manage the roster, preview, trigger sends. Sends nothing itself when hosted — it asks GitHub to. |
+
+That split is deliberate. Mail submitted from rented cloud IPs lands in spam;
+mail from GitHub's runners reaches the inbox. Confirmed the hard way — see
+*History* at the bottom.
 
 ---
 
-## Setup
+## Everyday use
 
-### 1. Install dependencies
+### Add or edit a student
+
+**Easiest:** open the dashboard, edit the row, Save. Hosted, that commits
+straight back to the repository.
+
+**Or:** edit `data/students.csv` on github.com — works from a phone.
+
+**Or:** locally, then push:
 
 ```bash
-python -m pip install -r requirements.txt
+cd "D:\email auto" && git add data/students.csv && git commit -m "Update students" && git push
 ```
 
-### 2. Create your config
+Whichever you use, the file in the repository is the single source of truth.
 
-Copy `.env.example` to `.env` and fill it in. **Never commit `.env`** — it holds
-your mail password. It is already in `.gitignore`.
+### Send something by hand
 
-### 3. Add the students
+Dashboard → **Wish anyone** → address, name, optional message → **Send now**.
 
-Copy `data/students.example.csv` to `data/students.csv` and replace the rows,
-or export your Google Form responses as CSV and point `SOURCE_PATH` at it.
+Or github.com → Actions → **Birthday wishes** → *Run workflow*, filling
+`wish_email`. Same path, no dashboard needed.
 
-Column headers are matched loosely, so all of these work:
+### Check it worked
 
-| what it needs | headers it recognises |
+The dashboard's **Activity** panel shows recent runs (with how late each one
+started) and every delivery. You also get a summary email after each run.
+
+---
+
+## The schedule
+
+Wishes go out at **midnight IST**, the moment the birthday begins.
+
+```
+30 18 * * *   18:30 UTC = 00:00 IST   <- intended
+31 19 * * *   19:31 UTC = 01:01 IST   <- retry
+32 20 * * *   20:32 UTC = 02:02 IST   <- retry
+ 7  2 * * *   02:07 UTC = 07:37 IST   <- morning safety net
+```
+
+**Why four?** GitHub's free-tier cron is not punctual — measured delays of
+1h16m and 2h14m on the same day. Runs queue behind paid customers. So rather
+than one hopeful trigger, there are four: whichever fires first does the
+sending, and the rest find today's entries already in the sent log and skip.
+The duplicate guard turns unbounded lateness into a bounded window.
+
+**Do not** assume a missing email at 00:05 means failure. Check Activity, or
+the Actions tab, before concluding anything.
+
+> Midnight IST is 18:30 UTC *the previous day*. The code resolves "today" in
+> `Asia/Kolkata` (`config.today()`), never from the runner's clock — otherwise
+> the midnight run would look up yesterday's birthdays and quietly wish nobody.
+
+---
+
+## Setup from scratch
+
+### The sender (GitHub Actions)
+
+Two repository secrets, under Settings → Secrets and variables → Actions:
+
+| Secret | Value |
 |---|---|
-| name | `Full Name`, `Student Name`, `Your Name`, `Name` |
-| email | `Email Address`, `Email`, `E-mail`, `Mail ID` |
-| birthday | `Date of Birth`, `DOB`, `Birthday`, `Birth Date` |
+| `EMAIL_USER` | the sending Gmail address |
+| `EMAIL_PASS` | a Gmail **app password**, not the account password |
 
-Dates are parsed from many formats (`13/08/2004`, `2004-08-13`,
-`13 August 2004`, …), day-first by default. Anything unreadable is reported,
-never guessed at.
+App password: the account needs 2-Step Verification on, then
+Google Account → Security → App passwords.
 
-### 4. Make the poster template
+Repository *variables* (visible, not secret) carry the rest: `EMAIL_FROM_NAME`,
+`REPLY_TO`, `REPORT_EMAIL`, `REPORT_ALWAYS`, `SMTP_HOST`, `SMTP_PORT`,
+`POSTER_MODE`, and `TEST_EMAIL`.
+
+**`TEST_EMAIL` is the safety net.** While it holds an address, every greeting
+goes there instead of to students. Set it, watch one run, then clear it.
+
+### The dashboard, hosted (Render)
+
+[render.yaml](render.yaml) describes the service. On render.com: **New →
+Blueprint** → pick this repository → it prompts for:
+
+| Variable | Value |
+|---|---|
+| `DASH_USER` | dashboard login name |
+| `DASH_PASS` | a real password — this guards student personal data on a public URL |
+| `GITHUB_TOKEN` | fine-grained PAT, this repo only, **Contents: RW** and **Actions: RW** |
+
+`FLASK_SECRET` generates itself. Free tier sleeps after 15 idle minutes, so the
+first visit of the day takes ~50 seconds to wake.
+
+### The dashboard, locally
 
 ```bash
-python tools/make_template.py
+pip install -r requirements.txt
 ```
 
-That writes a plain gradient template to `assets/template.png`. Replace it with
-a real design (Canva, 1200×800 or larger) whenever you have one — just keep the
-middle band clear, since that's where the name is drawn. To move the name, edit
-`NAME_BOX` in [src/poster.py](src/poster.py). Drop a `.ttf` at `assets/font.ttf`
-to control the typeface; otherwise a system font is used.
+Double-click `Dashboard.bat`. No login (it is bound to localhost), reads the
+local CSV, and sends via the local CLI.
 
 ---
 
-## Using it
+## Command line
 
 ```bash
 python -m src.main --validate            # check the roster, send nothing
-python -m src.main --preview "Asha K"    # render one poster to out/
-python -m src.main --upcoming 30         # who has a birthday soon
+python -m src.main --upcoming 30         # who is next
 python -m src.main --dry-run             # full run, no mail leaves
-python -m src.main --date 2026-08-13     # pretend it is that day
+python -m src.main --date 2026-08-14     # pretend it is that day
+python -m src.main --check-login         # prove the mail credentials work
+python -m src.main --preview "Asha K"    # render the greeting
+python -m src.main --wish a@b.com        # one-off, any address, any date
 python -m src.main                       # the real thing
 ```
-
-Extra flags: `--save-posters` keeps a copy of each poster, `--force` re-sends
-even if the log says it already went out.
-
-**Recommended first real test:** set `TEST_EMAIL=` in `.env` to your own
-address. Every wish then goes to you instead of to students, so you can see
-exactly what they'd receive. Clear it when you're happy.
-
----
-
-## Scheduling it
-
-`run_daily.bat` is ready for **Windows Task Scheduler**:
-
-1. Task Scheduler → *Create Basic Task* → name it, trigger **Daily**, e.g. 08:00
-2. Action: *Start a program* → browse to `run_daily.bat`
-3. Tick **Run whether user is logged on or not**, and under Conditions untick
-   *Start only if on AC power*
-
-Output goes to `logs/run.log`. The PC must be on at that time — if that's a
-problem, run it on a small VPS or via a GitHub Actions cron instead.
 
 ---
 
 ## How it protects itself
 
-- **Never double-sends.** Every success is written to `logs/sent_log.csv`, and a
-  re-run on the same day skips anyone already wished.
-- **Bad data can't send bad mail.** Missing names, invalid emails and unparseable
-  dates are skipped and reported, not guessed.
-- **Feb 29 birthdays** are wished on Feb 28 in non-leap years, so they aren't
-  skipped for three years at a time.
-- **Duplicate form submissions** are collapsed by email, keeping the latest one.
-- **One failure doesn't stop the run** — it's logged and the rest still go out.
-- **Rate limiting** via `SEND_DELAY_SECONDS` so the provider doesn't throttle you.
-
----
-
-## Reading from the Google Sheet directly
-
-Instead of exporting a CSV each time, the script can read the form responses
-live:
-
-1. `pip install gspread google-auth`
-2. Google Cloud Console → new project → enable the **Google Sheets API**
-3. Create a **Service Account**, make a JSON key, save it as `credentials.json`
-4. **Share the responses Sheet with the service account's email address**
-   (`...@....iam.gserviceaccount.com`) as Viewer — whoever owns the form can do
-   this themselves
-5. In `.env`: `SOURCE_TYPE=gsheet` and `GSHEET_ID=` (the long id in the sheet URL)
-
----
-
-## Switching to the college address
-
-Change `EMAIL_USER` and `EMAIL_PASS` in `.env`. Nothing else moves.
-
-Before relying on it, check with college IT:
-
-- **Are App Passwords enabled?** Many Google Workspace admins disable them
-  org-wide, in which case SMTP-with-a-password won't authenticate and you'd need
-  OAuth2 + the Gmail API instead.
-- **Microsoft 365?** Basic SMTP auth is off by default on most tenants — either
-  have them enable SMTP AUTH for that one mailbox, or use Microsoft Graph.
-- Ask for a **dedicated mailbox** (`birthday@college.edu`) rather than a personal
-  account, so it survives you graduating.
-
----
-
-## A note on the data
-
-`students.csv` holds names, emails and dates of birth of real students. Keep it
-out of public repos (it's gitignored), don't forward it around, and get the
-college's sign-off before loading real records or sending from a college domain.
+- **Never double-sends.** Every success is recorded in `logs/sent_log.csv`,
+  which is committed back after each run. A second run the same day skips.
+- **29 February** birthdays are wished on the 28th in non-leap years.
+- **Day-first dates.** `13/08/2004` is 13 August, not an error.
+- **Bad rows are reported, never guessed at** — missing names, invalid
+  addresses and unreadable dates are listed rather than silently dropped.
+- **One failure does not stop the run**; it is logged and the rest go out.
+- **The hosted dashboard is behind a login**, because the roster is student
+  personal data. Sessions are signed cookies.
+- **Timezone-correct**, as described above.
 
 ---
 
 ## Layout
 
 ```
-Dashboard.bat            opens the browser dashboard   <- start here
-Start.bat                text menu alternative
-.env                     your settings (gitignored)
-data/students.csv        the roster (gitignored)
-assets/template.png      poster background
-assets/font.ttf          optional custom font
-src/config.py            settings loader
-src/students.py          reading, cleaning, birthday matching
-src/poster.py            draws the name on the template
-src/message.py           the email wording  <- edit this for tone
-src/mailer.py            SMTP sending
-src/sent_log.py          duplicate protection
-src/main.py              CLI entry point
-src/dashboard.py         the browser dashboard
-src/store.py             reading/writing students and settings
-templates/index.html     the dashboard page
-tools/make_template.py   generates a starter template
-run_daily.bat            for Windows Task Scheduler
-logs/sent_log.csv        who was wished, when
-out/                     rendered posters
+data/students.csv          the roster - the source of truth
+logs/sent_log.csv          delivery history + duplicate protection
+.github/workflows/         birthday.yml is the sender
+src/main.py                CLI entry point
+src/students.py            reading, cleaning, birthday matching
+src/message.py             the wording          <- edit for tone
+src/mailer.py              SMTP
+src/sent_log.py            duplicate protection + history
+src/dashboard.py           the web UI (local and hosted)
+src/store.py               roster editing
+src/gitstore.py            GitHub as the store, workflow dispatch
+templates/index.html       the dashboard page
+render.yaml                hosted dashboard service
+Dashboard.bat              open the dashboard locally
 ```
+
+`cloudflare/` is **archived, not live** — a React + Workers rewrite that was
+built, deployed, and rolled back. Kept for reference only; nothing in it runs.
+
+---
+
+## History, and why it is built this way
+
+Worth reading before changing the architecture — these were expensive lessons.
+
+**Sending moved to GitHub Actions, and should stay there.** The system was
+rewritten for Cloudflare Workers (React dashboard, D1, cron). It worked, but
+its mail landed in spam for fresh recipients even after the message bytes were
+made byte-identical to the Python version's. The difference is the submission
+IP: Cloudflare's shared egress carries a reputation Gmail distrusts. GitHub's
+runners deliver to the inbox. The whole rewrite was rolled back.
+
+**Spam is mostly about structure and reputation, not wording.** Three real
+causes were found and fixed: base64-encoding the whole body (a scanner-evasion
+pattern), an invented `Message-ID` on a domain that does not resolve, and a
+subject encoded as one opaque base64 blob. Python's `email` library does none
+of those, which is why the original never had the problem.
+
+**GitHub cron is late, not broken.** A morning was lost to concluding the
+system had failed when it had simply not run yet. Hence the four triggers and
+the Activity panel showing the delay.
