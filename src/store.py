@@ -5,9 +5,11 @@ has a Timestamp column, for instance), so nothing is lost on save.
 """
 
 import csv
+import io
 import re
 import shutil
 from datetime import datetime
+from pathlib import Path
 
 from . import config, gitstore, students as roster
 
@@ -159,6 +161,141 @@ def update_student(index, name, email, dob):
     rows[index][email_c] = email
     rows[index][dob_c] = dob.strip()
     _write(rows, fields)
+
+
+def parse_upload(filename, data):
+    """Turns an uploaded file into rows of {name, email, dob}.
+
+    Column headers are matched loosely - the same rules the daily job uses -
+    so a Google Forms export works untouched, whatever the questions were
+    called.
+    """
+    suffix = Path(filename).suffix.lower()
+
+    if suffix in (".xlsx", ".xlsm"):
+        try:
+            from openpyxl import load_workbook
+        except ImportError as exc:
+            raise ValueError(
+                "Reading .xlsx needs openpyxl: pip install openpyxl"
+            ) from exc
+        ws = load_workbook(io.BytesIO(data), data_only=True, read_only=True).active
+        rows = ws.iter_rows(values_only=True)
+        try:
+            headers = [str(h).strip() if h is not None else "" for h in next(rows)]
+        except StopIteration:
+            raise ValueError("That spreadsheet is empty.")
+        records = [dict(zip(headers, row)) for row in rows]
+
+    elif suffix in (".csv", ".tsv", ".txt"):
+        text = data.decode("utf-8-sig", errors="replace")
+        if not text.strip():
+            raise ValueError("That file is empty.")
+        # Sniff the separator so tab- and semicolon-separated exports work too.
+        try:
+            dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;\t|")
+        except csv.Error:
+            dialect = csv.excel
+        records = list(csv.DictReader(io.StringIO(text), dialect=dialect))
+        headers = list(records[0].keys()) if records else []
+
+    else:
+        raise ValueError(
+            f"Cannot read {suffix or 'that file'}. Save it as .csv or .xlsx first "
+            f"- from Excel or Google Sheets, File → Download → CSV."
+        )
+
+    if not records:
+        raise ValueError("No rows found in that file.")
+
+    name_c = roster._find_column(headers, roster.NAME_KEYS)
+    email_c = roster._find_column(headers, roster.EMAIL_KEYS)
+    dob_c = roster._find_column(headers, roster.DOB_KEYS)
+
+    missing = [label for label, col in
+               (("name", name_c), ("email", email_c), ("date of birth", dob_c))
+               if col is None]
+    if missing:
+        raise ValueError(
+            "Could not find a column for " + ", ".join(missing) +
+            ". Headers found: " + ", ".join(str(h) for h in headers if h)
+        )
+
+    return [{"name": r.get(name_c), "email": r.get(email_c), "dob": r.get(dob_c)}
+            for r in records]
+
+
+def import_students(incoming):
+    """Merges rows into the roster. Existing people are updated by email
+    rather than duplicated; unreadable rows are reported, never guessed at.
+
+    Returns (added, updated, skipped) where skipped is [(row_number, reason)].
+    """
+    rows, fields = _read_raw()
+    name_c, email_c, dob_c = _columns(fields)
+
+    by_email = {}
+    for i, row in enumerate(rows):
+        key = str(row.get(email_c) or "").strip().lower()
+        if key:
+            by_email[key] = i
+
+    added = updated = 0
+    skipped = []
+    seen = set()
+
+    for n, raw in enumerate(incoming, start=2):   # 2 = first row under the header
+        name = str(raw.get("name") or "").strip()
+        email = str(raw.get("email") or "").strip().lower()
+        dob_raw = raw.get("dob")
+
+        if not any((name, email, dob_raw)):
+            continue                              # blank line, not an error
+
+        if not name:
+            skipped.append((n, "no name"))
+            continue
+        if not email:
+            skipped.append((n, "no email address"))
+            continue
+        if not roster.EMAIL_RE.match(email):
+            skipped.append((n, f"invalid email: {email}"))
+            continue
+        if email in seen:
+            skipped.append((n, f"appears twice in the file: {email}"))
+            continue
+
+        parsed = roster.parse_dob(dob_raw)
+        if parsed is None:
+            skipped.append((n, f"unreadable date of birth: {dob_raw!r}"))
+            continue
+
+        seen.add(email)
+        iso = parsed.isoformat()
+
+        if email in by_email:
+            row = rows[by_email[email]]
+            if (str(row.get(name_c) or "").strip() != name
+                    or roster.parse_dob(row.get(dob_c)) != parsed):
+                row[name_c] = name
+                row[dob_c] = iso
+                updated += 1
+        else:
+            row = {f: "" for f in fields}
+            row[name_c] = name
+            row[email_c] = email
+            row[dob_c] = iso
+            ts_c = roster._find_column(fields, roster.TIMESTAMP_KEYS)
+            if ts_c:
+                row[ts_c] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            rows.append(row)
+            by_email[email] = len(rows) - 1
+            added += 1
+
+    if added or updated:
+        _write(rows, fields, f"Import: {added} added, {updated} updated")
+
+    return added, updated, skipped
 
 
 def delete_student(index):

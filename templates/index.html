@@ -471,6 +471,29 @@
       <span class="hint" style="margin:0;" id="pageLabel"></span>
       <button class="tiny" type="button" id="next">Next</button>
     </div>
+
+    <details>
+      <summary>Import a file</summary>
+      <p class="hint" style="margin-top:12px;">
+        Takes a <strong>.csv</strong> or <strong>.xlsx</strong> — a Google Forms
+        export works as-is. Column headings are matched loosely, so
+        “Full Name”, “Email Address”, “Date of Birth”, “DOB” and similar are all
+        understood, in any order.
+      </p>
+      <p class="hint">
+        People already on the list are matched by email and <em>updated</em>,
+        never duplicated. Rows with a missing name, a bad address or an
+        unreadable date are skipped and listed for you — nothing is guessed at.
+      </p>
+      <form method="post" action="/students/import" enctype="multipart/form-data">
+        <div class="row" style="margin-top:12px;">
+          <input type="file" name="file" accept=".csv,.tsv,.txt,.xlsx,.xlsm"
+                 required style="flex:1 1 240px;background:transparent;
+                 box-shadow:none;border-style:dashed;">
+          <button class="primary" type="submit">Import</button>
+        </div>
+      </form>
+    </details>
   </div>
 
   <!-- ---------------------------------------------------------------- -->

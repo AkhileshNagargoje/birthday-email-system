@@ -294,6 +294,39 @@ def update_student():
         return redirect(url_for("index", err=str(exc)))
 
 
+@app.post("/students/import")
+def import_students():
+    upload = request.files.get("file")
+    if not upload or not upload.filename:
+        return redirect(url_for("index", err="Choose a file first."))
+
+    try:
+        data = upload.read()
+        if len(data) > 5 * 1024 * 1024:
+            raise ValueError("That file is larger than 5 MB - is it really a roster?")
+        rows = store.parse_upload(upload.filename, data)
+        added, updated, skipped = store.import_students(rows)
+    except Exception as exc:
+        return redirect(url_for("index", err=str(exc)))
+
+    parts = []
+    if added:
+        parts.append(f"{added} added")
+    if updated:
+        parts.append(f"{updated} updated")
+    if not parts:
+        parts.append("nothing new")
+
+    message = f"Imported from {upload.filename}: " + ", ".join(parts) + "."
+    if skipped:
+        detail = "; ".join(f"row {n} ({why})" for n, why in skipped[:5])
+        more = f" and {len(skipped) - 5} more" if len(skipped) > 5 else ""
+        message += f" {len(skipped)} row(s) skipped: {detail}{more}."
+        return redirect(url_for("index", err=message))
+
+    return redirect(url_for("index", msg=message))
+
+
 @app.post("/students/delete")
 def delete_student():
     try:
