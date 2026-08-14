@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Birthday Email System</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light">
+<!-- Inline so there is no second request and nothing to 404. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111113'/%3E%3Cpath d='M16 7c1.6 1.7 1.6 3.3 0 4.2-1.6-.9-1.6-2.5 0-4.2z' fill='%23fff'/%3E%3Crect x='15.2' y='11.5' width='1.6' height='4' fill='%23fff'/%3E%3Cpath d='M8 17h16v6a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-6z' fill='%23fff'/%3E%3C/svg%3E">
 <style>
   /* ---------------------------------------------------------------------
      Tactile minimalism. The layout stays spare and monochrome, but every
@@ -255,6 +259,28 @@
   summary::before { content: "+ "; color: var(--ink-4); }
   details[open] summary::before { content: "– "; }
   summary:hover { color: var(--ink); }
+
+  /* ---- phones ----
+     Two things that only bite on a real device: iOS Safari zooms the whole
+     page when you focus an input smaller than 16px, and 39px controls are
+     under the 44px touch target everyone recommends. */
+  @media (max-width: 640px) {
+    .wrap { padding: 0 14px 60px; }
+    .head-in { padding: 12px 14px; }
+    .panel { padding: 18px 16px; border-radius: 9px; }
+    input, select, textarea { font-size: 16px; padding: 10px 12px; }
+    button { font-size: 15px; padding: 11px 16px; min-height: 44px; }
+    button.tiny { font-size: 14px; padding: 8px 12px; min-height: 38px; }
+    .row { gap: 10px; }
+    .row button { flex: 1 1 auto; }
+    .stat { padding: 14px 16px; }
+    .stat .n { font-size: 26px; }
+    .listbar { padding: 12px; }
+    .listbar > div { flex: 1 1 100%; }
+    /* Tables already scroll inside their own box; let them bleed to the
+       panel edge so the scrollable area is as wide as possible. */
+    .scroll { margin: 0 -16px; padding: 0 16px; }
+  }
 
   .danger-note { margin: 13px 0 0; font-size: 12.5px; color: var(--ink-3); }
   .danger-note::before {
