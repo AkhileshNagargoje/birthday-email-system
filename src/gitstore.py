@@ -77,6 +77,31 @@ def describe():
 WORKFLOW = os.getenv("GITHUB_WORKFLOW_FILE", "birthday.yml").strip()
 
 
+def recent_runs(limit=5):
+    """The last few workflow runs, so the dashboard can answer "did it fire?"
+    without anyone opening GitHub. Returns [] rather than raising - a missing
+    run list must never take the whole page down."""
+    if not enabled():
+        return []
+    url = (f"{API}/repos/{REPO}/actions/workflows/{WORKFLOW}/runs"
+           f"?per_page={limit}")
+    try:
+        data = _request("GET", url) or {}
+    except Exception:
+        return []
+
+    runs = []
+    for run in data.get("workflow_runs", []):
+        runs.append({
+            "status": run.get("status"),
+            "conclusion": run.get("conclusion"),
+            "event": run.get("event"),
+            "started": run.get("run_started_at"),
+            "url": run.get("html_url"),
+        })
+    return runs
+
+
 def dispatch_workflow(inputs):
     """Fires the sending workflow on GitHub Actions.
 

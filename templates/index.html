@@ -209,6 +209,15 @@
   }
   .empty { color: var(--ink-4); padding: 20px 6px; font-size: 14px; }
 
+  /* Status marker. Monochrome like everything else: filled means good,
+     hollow means it wants a look. */
+  .dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 8px; vertical-align: middle;
+  }
+  .dot.ok  { background: var(--ink); box-shadow: var(--edge); }
+  .dot.bad { background: transparent; border: 1.5px solid var(--ink); }
+
   /* ---- coming up ---- */
   .up {
     display: flex; justify-content: space-between; align-items: baseline;
@@ -430,6 +439,79 @@
       The test-address safety net does not apply here — you named the
       recipient, so this reaches them.
     </p>
+  </div>
+
+  <!-- ---------------------------------------------------------------- -->
+  <div class="panel">
+    <h2>Activity</h2>
+
+    {% if runs %}
+    <p class="hint" style="margin:-8px 0 12px;">
+      Scheduled runs often start late — GitHub's free tier queues them behind
+      paid work. Late is normal; failed is not.
+    </p>
+    <div class="scroll" style="margin-bottom:22px;">
+      <table>
+        <thead>
+          <tr><th style="width:34%">Run</th><th style="width:22%">Type</th>
+              <th style="width:22%">Started late by</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+        {% for r in runs %}
+          <tr>
+            <td style="padding-left:6px;">
+              {% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noreferrer"
+                 style="color:inherit;">{{ r.when }}</a>{% else %}{{ r.when }}{% endif %}
+            </td>
+            <td style="color:var(--ink-3);">{{ r.event }}</td>
+            <td style="color:var(--ink-3);font-variant-numeric:tabular-nums;">
+              {{ r.slip if r.slip else "—" }}
+            </td>
+            <td>
+              <span class="dot {{ 'ok' if r.ok else 'bad' }}"></span>{{ r.conclusion }}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <h2 style="margin-bottom:12px;">
+      Recent deliveries
+      {% if sent_summary and sent_summary.total_sent %}
+        <span style="text-transform:none;letter-spacing:0;color:var(--ink-4);">
+          · {{ sent_summary.total_sent }} sent all time{% if sent_summary.failed %},
+          {{ sent_summary.failed }} failed{% endif %}
+        </span>
+      {% endif %}
+    </h2>
+
+    {% if history %}
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th style="width:22%">When</th><th style="width:26%">Name</th>
+              <th style="width:34%">Address</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+        {% for h in history %}
+          <tr>
+            <td style="padding-left:6px;color:var(--ink-3);
+                       font-variant-numeric:tabular-nums;">{{ h.when }}</td>
+            <td>{{ h.name }}</td>
+            <td style="color:var(--ink-3);">{{ h.email }}</td>
+            <td>
+              <span class="dot {{ 'ok' if h.status == 'sent' else 'bad' }}"></span>{{ h.status }}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="hint" style="margin:0;">Nothing has been sent yet.</p>
+    {% endif %}
   </div>
 
   <!-- ---------------------------------------------------------------- -->

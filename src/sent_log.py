@@ -15,6 +15,41 @@ def _ensure_file():
             csv.DictWriter(fh, fieldnames=FIELDS).writeheader()
 
 
+def history(limit=40):
+    """Recent deliveries, newest first, for the dashboard."""
+    if not config.SENT_LOG.exists():
+        return []
+
+    with open(config.SENT_LOG, newline="", encoding="utf-8-sig") as fh:
+        rows = list(csv.DictReader(fh))
+
+    out = []
+    for row in reversed(rows[-limit:]):
+        stamp = (row.get("sent_at") or "").replace("T", " ")
+        out.append({
+            "when": stamp[:16],          # to the minute; seconds are noise here
+            "day": stamp[:10],
+            "name": row.get("name", ""),
+            "email": row.get("email", ""),
+            "status": row.get("status", ""),
+            "detail": row.get("detail", ""),
+            "source": row.get("source", "daily"),
+        })
+    return out
+
+
+def summary():
+    """Counts for the dashboard's headline numbers."""
+    rows = history(limit=100000)
+    sent = [r for r in rows if r["status"] == "sent"]
+    return {
+        "total_sent": len(sent),
+        "failed": sum(1 for r in rows if r["status"] == "failed"),
+        "last_day": sent[0]["day"] if sent else None,
+        "last_day_count": sum(1 for r in sent if sent and r["day"] == sent[0]["day"]),
+    }
+
+
 def already_sent(email, birthday_date):
     """True if this address was successfully wished for this exact date."""
     if not config.SENT_LOG.exists():
