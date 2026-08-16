@@ -8,7 +8,8 @@ name: Test send
 
 on:
   schedule:
-    # 14:30 UTC = 20:00 IST.
+    # 02:33 UTC = 08:03 IST. An odd minute on purpose: :00 and :30 are the
+    # most contended slots on GitHub's free tier, so they queue longest.
     #
     # READ THIS BEFORE LEAVING IT RUNNING. Unlike the birthday job, this one
     # has no date check and no duplicate guard - it sends to everybody on the
@@ -18,7 +19,7 @@ on:
     # that once already.
     #
     # Delete these two lines once the test is done.
-    - cron: '30 14 * * *'
+    - cron: '33 2 * * *'
 
   workflow_dispatch:
     inputs:
