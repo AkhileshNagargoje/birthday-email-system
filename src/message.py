@@ -42,36 +42,106 @@ def plain_text(student, note=""):
 
 
 def banner_html(name):
-    """The masthead, drawn in HTML rather than as an image.
+    """The masthead, drawn entirely in HTML.
 
-    Table-based with inline styles and a solid background colour underneath the
-    gradient, because Outlook ignores CSS gradients and most modern layout
-    properties. No images anywhere: many clients block them by default, and a
-    blocked image means the student opens an empty grey box.
+    No image files anywhere, deliberately. Gmail and Outlook block images by
+    default from senders you have not corresponded with, and a blocked image
+    means the student opens a grey box instead of a message. Everything here -
+    the gradient, the rules, the ornament - is markup that always renders.
+
+    Table-based with inline styles, a `bgcolor` attribute and a solid colour
+    beneath the gradient, because Outlook ignores gradients and most modern
+    CSS. It degrades to flat forest green, which still looks intentional.
     """
     return f"""\
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-             border="0" style="background-color:#1b5e3f;">
+             border="0" bgcolor="#14523a" style="background-color:#14523a;">
         <tr>
-          <td align="center" style="padding:40px 24px 36px;
-              background-color:#1b5e3f;
-              background-image:linear-gradient(160deg,#14523a 0%,#2f7d4f 100%);">
-            <div style="font-size:34px;line-height:1;margin-bottom:14px;">
-              &#127793;
-            </div>
+          <td align="center" style="padding:14px 24px 0;background-color:#14523a;
+              background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
             <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
-                        font-size:13px;letter-spacing:.24em;font-weight:600;
+                        font-size:10.5px;letter-spacing:.26em;font-weight:600;
+                        color:#7fc59b;text-transform:uppercase;">
+              {_html.escape(config.EMAIL_FROM_NAME)}
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:22px 24px 6px;background-color:#14523a;
+              background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
+            <div style="font-size:44px;line-height:1;">&#127795;</div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:10px 24px 0;background-color:#1b5e3f;
+              background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
+            <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
+                        font-size:11.5px;letter-spacing:.3em;font-weight:600;
                         color:#a7e0be;text-transform:uppercase;">
               Happy Birthday
             </div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:6px 24px 4px;background-color:#1b5e3f;
+              background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
             <div style="font-family:Georgia,'Times New Roman',serif;
-                        font-size:34px;line-height:1.25;font-weight:700;
-                        color:#ffffff;padding:8px 0 0;">
+                        font-size:36px;line-height:1.2;font-weight:700;
+                        color:#ffffff;letter-spacing:-0.01em;">
               {name}
             </div>
           </td>
         </tr>
+        <tr>
+          <td align="center" style="padding:14px 24px 34px;background-color:#2b7a4e;
+              background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
+            <!-- A short rule instead of a divider line: quieter, and it reads
+                 as ornament rather than a seam. -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr><td width="46" height="2" bgcolor="#7fc59b"
+                      style="background-color:#7fc59b;font-size:0;line-height:0;">&nbsp;</td></tr>
+            </table>
+          </td>
+        </tr>
       </table>"""
+
+
+def steps_html():
+    """The three things to actually do, as numbered steps.
+
+    Prettier than a paragraph, and more effective: an instruction someone can
+    picture themselves completing gets done far more often than an appeal.
+    """
+    steps = [
+        ("1", "Collect", "a free sapling"),
+        ("2", "Plant", "on campus or at home"),
+        ("3", "Reply", "with a photo"),
+    ]
+    cells = "".join(f"""
+            <td width="33%" align="center" valign="top" style="padding:0 6px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+                     align="center">
+                <tr>
+                  <td width="30" height="30" align="center" valign="middle"
+                      bgcolor="#14523a" style="background-color:#14523a;
+                      border-radius:15px;font-family:Georgia,serif;font-size:14px;
+                      font-weight:700;color:#ffffff;line-height:30px;">{n}</td>
+                </tr>
+              </table>
+              <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
+                          font-size:14px;font-weight:600;color:#14523a;
+                          padding-top:10px;">{title}</div>
+              <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
+                          font-size:12.5px;line-height:1.45;color:#6a7d70;
+                          padding-top:3px;">{sub}</div>
+            </td>""" for n, title, sub in steps)
+
+    return f"""
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               border="0" style="margin:0 0 26px;">
+          <tr>{cells}
+          </tr>
+        </table>"""
 
 
 def html(student, image_cid, note=""):
@@ -103,33 +173,46 @@ def html(student, image_cid, note=""):
         </p>
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-               border="0" style="margin:0 0 20px;">
+               border="0" style="margin:0 0 24px;">
           <tr>
-            <td style="background-color:#eef7f1;border-left:4px solid #2f7d4f;
-                       padding:20px 22px;border-radius:0 8px 8px 0;">
+            <td bgcolor="#f0f7f2" style="background-color:#f0f7f2;
+                       border:1px solid #d7e8de;border-left:4px solid #2b7a4e;
+                       padding:22px 24px;border-radius:0 10px 10px 0;">
               <div style="font-family:Georgia,'Times New Roman',serif;
-                          font-size:22px;font-weight:700;color:#14523a;
-                          line-height:1.3;">
+                          font-size:25px;font-weight:700;color:#14523a;
+                          line-height:1.25;letter-spacing:-0.01em;">
                 Plant one tree today.
               </div>
-              <div style="font-size:15px;line-height:1.6;color:#3d5c4b;
-                          padding-top:8px;">
-                {_html.escape(config.SAPLING_INFO)} Plant it on campus or at
-                home — your choice. It takes twenty minutes.
+              <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
+                          font-size:14.5px;line-height:1.6;color:#4a6153;
+                          padding-top:9px;">
+                {_html.escape(config.SAPLING_INFO)} It takes twenty minutes.
               </div>
             </td>
           </tr>
         </table>
 
-        <p style="margin:0 0 18px;font-size:16px;line-height:1.65;color:#33383a;">
-          Then <strong>reply to this email with a photo</strong> of you and your
-          tree. We are collecting every one of them.
+        {steps_html()}
+
+        <p style="margin:0 0 22px;font-size:15.5px;line-height:1.65;color:#3a4a40;
+                  text-align:center;">
+          Send us the photo and we will add your tree to the count.<br>
+          <span style="color:#6a7d70;font-size:14.5px;">
+            Every student gets this email on their birthday. By the time you
+            graduate, your batch will have planted hundreds.
+          </span>
         </p>
 
-        <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5a6b60;
-                  font-style:italic;">
-          {_html.escape(config.INITIATIVE_NAME)}. That is the whole idea.
-        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               border="0" style="margin:0 0 22px;">
+          <tr>
+            <td align="center" style="font-family:Georgia,'Times New Roman',serif;
+                       font-size:15px;font-style:italic;color:#2b7a4e;
+                       letter-spacing:.01em;">
+              &#127807; {_html.escape(config.INITIATIVE_NAME)}
+            </td>
+          </tr>
+        </table>
         """
 
     return f"""\
@@ -142,9 +225,9 @@ def html(student, image_cid, note=""):
 
       {header}
 
-      <div style="padding:30px 32px 26px;">
-        <p style="margin:0 0 18px;font-size:17px;line-height:1.5;color:#14523a;
-                  font-weight:600;">
+      <div style="padding:32px 34px 28px;">
+        <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;
+                  font-size:19px;line-height:1.45;color:#14523a;">
           Happy Birthday, {student.first_name}!
         </p>
         {body}
@@ -162,11 +245,17 @@ def html(student, image_cid, note=""):
       </div>
     </div>
 
-    <p style="max-width:600px;margin:16px auto 0;font-size:12px;color:#7d8a82;
-              text-align:center;line-height:1.5;">
-      You are receiving this because your birthday is recorded with
-      {config.EMAIL_FROM_NAME}.
-    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td align="center" style="padding:18px 24px 0;">
+          <div style="max-width:600px;font-family:Segoe UI,Helvetica,Arial,sans-serif;
+                      font-size:11.5px;line-height:1.55;color:#7d8a82;">
+            You are receiving this because your birthday is recorded with
+            {config.EMAIL_FROM_NAME}.
+          </div>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>
 """
