@@ -188,6 +188,15 @@ def send_one_off(args, today):
     failed = 0
     try:
         for person in people:
+            # Same-day guard for one-offs too. The send history shows what
+            # happens without it: one address received three identical mails
+            # in nine seconds during testing, and repeat-identical sends are
+            # the retry-spam fingerprint. --force overrides deliberately.
+            if not args.force and not args.dry_run \
+                    and sent_log.already_sent(person.email, today):
+                print(f"  skip   {person.name} <{person.email}> - already "
+                      f"sent today (use --force to resend)")
+                continue
             try:
                 image = poster.make_poster(person.name)
                 if image:
