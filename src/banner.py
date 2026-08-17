@@ -15,8 +15,14 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from . import config
 
-WIDTH, HEIGHT = 1200, 500          # displayed at 600x250
+# 1200x330, displayed at 600x165 - and 375x103 on a phone. The taller version
+# ate most of a phone screen before the message was even visible.
+WIDTH, HEIGHT = 1200, 330
 SCALE = 2                          # drawn at 2x, then resized down
+
+# Flat illustration compresses far better as a palette image than as truecolour,
+# which matters: a heavy image against light text is a spam-filter signal.
+PALETTE_COLOURS = 128
 
 # Forest palette, dark at the top so pale text sits comfortably on it.
 DEEP = (13, 61, 43)
@@ -268,23 +274,23 @@ def make_banner(name: str) -> bytes:
     _tree(draw, tree_x, tree_base, s)
     _sapling(draw, sap_x, sap_base, s)
 
-    left = int(84 * s)
-    college = _font(int(17 * s))
-    label = _font(int(21 * s))
-    serif = _font(int(74 * s), serif=True)
-    small = _font(int(20 * s), serif=True)
+    left = int(64 * s)
+    college = _font(int(14 * s))
+    label = _font(int(16 * s))
+    small = _font(int(15 * s), serif=True)
 
-    y = int(96 * s)
-    _tracked(draw, (left, y), config.EMAIL_FROM_NAME.upper(), college, PALE, int(5 * s))
+    y = int(52 * s)
+    _tracked(draw, (left, y), config.EMAIL_FROM_NAME.upper(), college, PALE, int(4 * s))
 
-    y += int(52 * s)
-    _tracked(draw, (left, y), "HAPPY BIRTHDAY", label, GOLD, int(9 * s))
+    y += int(34 * s)
+    _tracked(draw, (left, y), "HAPPY BIRTHDAY", label, GOLD, int(7 * s))
 
     # The name: shrink to fit rather than overflow, since some are long.
-    y += int(46 * s)
-    max_w = int(WIDTH * 0.62) * s
-    font_px = int(74 * s)
-    while font_px > int(30 * s):
+    y += int(32 * s)
+    max_w = int(WIDTH * 0.60) * s
+    font_px = int(54 * s)
+    serif = _font(font_px, serif=True)
+    while font_px > int(24 * s):
         serif = _font(font_px, serif=True)
         if draw.textlength(name, font=serif) <= max_w:
             break
@@ -292,16 +298,22 @@ def make_banner(name: str) -> bytes:
     draw.text((left, y), name, font=serif, fill=CREAM)
 
     bbox = draw.textbbox((left, y), name, font=serif)
-    rule_y = bbox[3] + int(26 * s)
-    draw.rounded_rectangle([left, rule_y, left + int(66 * s), rule_y + int(4 * s)],
+    rule_y = bbox[3] + int(16 * s)
+    draw.rounded_rectangle([left, rule_y, left + int(48 * s), rule_y + int(3 * s)],
                            radius=int(2 * s), fill=GOLD)
 
-    draw.text((left, rule_y + int(26 * s)),
+    draw.text((left, rule_y + int(17 * s)),
               f"\u2022  {config.INITIATIVE_NAME}", font=small, fill=PALE)
 
     # Downscale: the whole point of drawing at 2x.
     image = image.resize((WIDTH, HEIGHT), Image.LANCZOS)
     image = image.filter(ImageFilter.SMOOTH)
+
+    # Palette-quantise. A flat illustration loses nothing visible and the file
+    # drops by roughly two thirds, which is the difference between a heavy
+    # image and a light one as far as a spam filter is concerned.
+    image = image.quantize(colors=PALETTE_COLOURS, method=Image.MEDIANCUT,
+                           dither=Image.FLOYDSTEINBERG)
 
     buffer = io.BytesIO()
     image.save(buffer, format="PNG", optimize=True)

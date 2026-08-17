@@ -8,8 +8,10 @@ name: Test send
 
 on:
   schedule:
-    # 02:33 UTC = 08:03 IST. An odd minute on purpose: :00 and :30 are the
-    # most contended slots on GitHub's free tier, so they queue longest.
+    # 18:33 UTC = 00:03 IST (midnight). An odd minute on purpose: :00 and :30
+    # are the most contended slots on GitHub's free tier, so they queue longest.
+    #
+    # Note midnight IST is 18:33 UTC the PREVIOUS day.
     #
     # READ THIS BEFORE LEAVING IT RUNNING. Unlike the birthday job, this one
     # has no date check and no duplicate guard - it sends to everybody on the
@@ -19,7 +21,7 @@ on:
     # that once already.
     #
     # Delete these two lines once the test is done.
-    - cron: '33 2 * * *'
+    - cron: '33 18 * * *'
 
   workflow_dispatch:
     inputs:
@@ -68,8 +70,8 @@ jobs:
           RECIPIENTS: ${{ github.event.inputs.recipients }}
           NAMES: ${{ github.event.inputs.names }}
         run: |
-          DEFAULT_TO="akng047@gmail.com,akhileshnagargoje@gmail.com,xboom047@gmail.com,thevengeance415@gmail.com,toniiiwayne@gmail.com"
-          DEFAULT_NAMES="Akhilesh,Akhilesh Nagargoje,Boom,Vengeance,Toni"
+          DEFAULT_TO="suvarnanagargoje86@gmail.com"
+          DEFAULT_NAMES="Suvarna"
 
           TO="${RECIPIENTS:-$DEFAULT_TO}"
           # Only pair the default names with the default addresses.
