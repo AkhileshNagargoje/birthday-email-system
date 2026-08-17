@@ -11,8 +11,17 @@ load_dotenv(ROOT / ".env")
 
 
 def _get(key, default=""):
-    value = os.getenv(key, default)
-    return value.strip() if isinstance(value, str) else value
+    """An empty environment variable counts as unset.
+
+    GitHub Actions always defines the env vars a workflow lists, so a
+    repository variable that does not exist arrives as "" rather than being
+    absent. Treating that as a real value once left SMTP_HOST empty and the
+    run failed with "could not connect to :587".
+    """
+    value = os.getenv(key)
+    if value is None or not value.strip():
+        return default.strip() if isinstance(default, str) else default
+    return value.strip()
 
 
 def _path(key, default):
