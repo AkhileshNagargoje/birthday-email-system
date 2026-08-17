@@ -14,46 +14,59 @@ class _Escaped:
 
 
 def subject(student):
-    return f"Happy Birthday, {student.first_name}! \U0001f389"
+    return f"Happy Birthday, {student.first_name} — plant a tree today \U0001f331"
 
 
 def plain_text(student, note=""):
-    body = note.strip() or (
-        "Wishing you a wonderful year ahead filled with good health, "
-        "great friends and plenty of success.\n\nHave a fantastic day!"
-    )
+    if note.strip():
+        body = note.strip()
+    else:
+        body = (
+            "Every year on your birthday you get older, and so does everything\n"
+            "around you. This year the department would like you to leave\n"
+            "something behind that will outgrow you.\n\n"
+            "PLANT ONE TREE TODAY.\n\n"
+            f"{config.SAPLING_INFO}\n"
+            "Plant it on campus or at home - your choice. It takes twenty minutes.\n\n"
+            "Then reply to this email with a photo of you and your tree. We are\n"
+            "collecting every one of them.\n\n"
+            f"{config.INITIATIVE_NAME}. That is the whole idea."
+        )
     return (
         f"Happy Birthday, {student.first_name}!\n\n"
         f"{body}\n\n"
-        f"— {config.EMAIL_FROM_NAME}\n"
+        f"Have a wonderful year ahead,\n"
+        f"{config.HOD_NAME}\n"
+        f"{config.HOD_TITLE}, {config.EMAIL_FROM_NAME}\n"
     )
 
 
 def banner_html(name):
-    """The birthday banner drawn in HTML instead of as an image.
+    """The masthead, drawn in HTML rather than as an image.
 
-    Table-based with inline styles and a solid background colour, because
-    Outlook ignores CSS gradients and most layout properties. The gradient is
-    layered on top for the clients that do support it.
+    Table-based with inline styles and a solid background colour underneath the
+    gradient, because Outlook ignores CSS gradients and most modern layout
+    properties. No images anywhere: many clients block them by default, and a
+    blocked image means the student opens an empty grey box.
     """
     return f"""\
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-             border="0" style="background-color:#3b2a72;">
+             border="0" style="background-color:#1b5e3f;">
         <tr>
-          <td align="center" style="padding:44px 24px;
-              background-color:#3b2a72;
-              background-image:linear-gradient(135deg,#232860 0%,#92347a 100%);">
-            <div style="font-size:30px;line-height:1;margin-bottom:16px;">
-              &#127881; &#127874; &#127880;
+          <td align="center" style="padding:40px 24px 36px;
+              background-color:#1b5e3f;
+              background-image:linear-gradient(160deg,#14523a 0%,#2f7d4f 100%);">
+            <div style="font-size:34px;line-height:1;margin-bottom:14px;">
+              &#127793;
             </div>
             <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
-                        font-size:17px;letter-spacing:.22em;font-weight:600;
-                        color:#ffd166;text-transform:uppercase;">
+                        font-size:13px;letter-spacing:.24em;font-weight:600;
+                        color:#a7e0be;text-transform:uppercase;">
               Happy Birthday
             </div>
-            <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
-                        font-size:38px;line-height:1.2;font-weight:700;
-                        color:#ffffff;padding-top:10px;">
+            <div style="font-family:Georgia,'Times New Roman',serif;
+                        font-size:34px;line-height:1.25;font-weight:700;
+                        color:#ffffff;padding:8px 0 0;">
               {name}
             </div>
           </td>
@@ -79,37 +92,78 @@ def html(student, image_cid, note=""):
             for para in note.strip().split("\n") if para.strip()
         )
     else:
-        body = (
-            '<p style="margin:0 0 14px;font-size:16px;line-height:1.6;">'
-            'Wishing you a wonderful year ahead filled with good health, '
-            'great friends and plenty of success.</p>'
-            '<p style="margin:0 0 24px;font-size:16px;line-height:1.6;">'
-            'Have a fantastic day!</p>'
-        )
+        # The ask is the point of the email, so it gets the weight: a plain
+        # sentence of context, then the request set apart where the eye lands,
+        # then the practical detail that makes it doable.
+        body = f"""
+        <p style="margin:0 0 18px;font-size:16px;line-height:1.65;color:#33383a;">
+          Every year on your birthday you get a little older — and so does
+          everything around you. This year the department would like you to
+          leave something behind that will outgrow you.
+        </p>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               border="0" style="margin:0 0 20px;">
+          <tr>
+            <td style="background-color:#eef7f1;border-left:4px solid #2f7d4f;
+                       padding:20px 22px;border-radius:0 8px 8px 0;">
+              <div style="font-family:Georgia,'Times New Roman',serif;
+                          font-size:22px;font-weight:700;color:#14523a;
+                          line-height:1.3;">
+                Plant one tree today.
+              </div>
+              <div style="font-size:15px;line-height:1.6;color:#3d5c4b;
+                          padding-top:8px;">
+                {_html.escape(config.SAPLING_INFO)} Plant it on campus or at
+                home — your choice. It takes twenty minutes.
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:0 0 18px;font-size:16px;line-height:1.65;color:#33383a;">
+          Then <strong>reply to this email with a photo</strong> of you and your
+          tree. We are collecting every one of them.
+        </p>
+
+        <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5a6b60;
+                  font-style:italic;">
+          {_html.escape(config.INITIATIVE_NAME)}. That is the whole idea.
+        </p>
+        """
 
     return f"""\
 <!DOCTYPE html>
 <html>
-  <body style="margin:0;padding:24px;background:#f4f5f7;
+  <body style="margin:0;padding:24px;background:#f2f5f2;
                font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1a;">
-    <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;
-                overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:12px;
+                overflow:hidden;box-shadow:0 2px 12px rgba(20,60,40,.10);">
 
       {header}
 
-      <div style="padding:28px 32px;">
-        <h1 style="margin:0 0 12px;font-size:24px;">
-          Happy Birthday, {student.first_name}! 🎉
-        </h1>
-        {body}
-        <p style="margin:0;font-size:14px;color:#666;">
-          — {config.EMAIL_FROM_NAME}
+      <div style="padding:30px 32px 26px;">
+        <p style="margin:0 0 18px;font-size:17px;line-height:1.5;color:#14523a;
+                  font-weight:600;">
+          Happy Birthday, {student.first_name}!
         </p>
+        {body}
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               border="0" style="border-top:1px solid #e3ebe5;margin-top:4px;">
+          <tr>
+            <td style="padding-top:18px;font-size:14px;line-height:1.55;color:#5a6b60;">
+              Have a wonderful year ahead,<br>
+              <strong style="color:#14523a;">{_html.escape(config.HOD_NAME)}</strong><br>
+              {_html.escape(config.HOD_TITLE)}, {config.EMAIL_FROM_NAME}
+            </td>
+          </tr>
+        </table>
       </div>
     </div>
 
-    <p style="max-width:640px;margin:16px auto 0;font-size:12px;color:#8a8a8a;
-              text-align:center;">
+    <p style="max-width:600px;margin:16px auto 0;font-size:12px;color:#7d8a82;
+              text-align:center;line-height:1.5;">
       You are receiving this because your birthday is recorded with
       {config.EMAIL_FROM_NAME}.
     </p>
