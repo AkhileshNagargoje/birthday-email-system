@@ -78,6 +78,100 @@ def _gradient(size):
     return strip.resize(size, Image.BILINEAR)
 
 
+def _sun(image, cx, cy, radius):
+    """A soft warm glow.
+
+    A blurred disc, not stacked rings - rings leave visible banding and a hard
+    core, which reads as a pasted circle rather than light in the sky.
+    """
+    glow = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    inner = int(radius * 0.42)
+    gd.ellipse([cx - inner, cy - inner, cx + inner, cy + inner],
+               fill=(255, 242, 198, 58))
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=radius * 0.34))
+    return Image.alpha_composite(image.convert("RGBA"), glow).convert("RGB")
+
+
+def _hill(draw, top_y, height, colour, width, bulge=1.0):
+    """A rolling hill: a very wide, very flat ellipse. Overlapping several at
+    different heights is what creates distance."""
+    overhang = int(width * bulge)
+    draw.ellipse([-overhang, top_y, width + overhang, top_y + height], fill=colour)
+
+
+def _distant_tree(draw, x, base_y, h, colour):
+    """A silhouette for the far hillside - no detail, just mass."""
+    trunk_w = max(2, int(h * 0.07))
+    draw.rectangle([x - trunk_w // 2, base_y - int(h * 0.32), x + trunk_w // 2, base_y],
+                   fill=colour)
+    r = int(h * 0.30)
+    for dx, dy, rr in ((0, -0.62, 1.0), (-0.34, -0.44, 0.72), (0.34, -0.46, 0.75)):
+        cx2 = x + int(r * dx * 2)
+        cy2 = base_y + int(h * dy)
+        rad = int(r * rr)
+        draw.ellipse([cx2 - rad, cy2 - rad, cx2 + rad, cy2 + rad], fill=colour)
+
+
+def _birds(draw, scale):
+    """Three gulls, drawn as pairs of arcs. Small enough to read as birds
+    without inviting inspection."""
+    for x, y, w in ((470, 92, 26), (536, 116, 19), (596, 84, 15)):
+        x, y, w = int(x * scale), int(y * scale), int(w * scale)
+        thickness = max(1, int(2 * scale))
+        draw.arc([x - w, y - w // 2, x, y + w // 2], 200, 340,
+                 fill=(178, 214, 192), width=thickness)
+        draw.arc([x, y - w // 2, x + w, y + w // 2], 200, 340,
+                 fill=(178, 214, 192), width=thickness)
+
+
+def _grass(draw, base_y, scale, width):
+    """Tufts of three blades at irregular intervals.
+
+    Evenly spaced single strokes read as a dashed line, not grass - the
+    irregularity is the whole effect.
+    """
+    step = int(64 * scale)
+    for i, x in enumerate(range(-step, width + step, step)):
+        jitter = int(((i * 37) % 29 - 14) * scale)
+        base_x = x + jitter
+        for blade, (dx, dh) in enumerate(((-5, 0.7), (0, 1.0), (5, 0.75))):
+            h = int((13 + (i * 11 + blade * 5) % 9) * scale * dh)
+            draw.line([(base_x + int(dx * scale), base_y),
+                       (base_x + int(dx * scale) + int((dx / 2) * scale), base_y - h)],
+                      fill=(19, 84, 58), width=max(1, int(2 * scale)))
+
+
+def _sapling(draw, x, base_y, scale):
+    """A newly planted sapling - the thing the email is actually asking for,
+    so it belongs in the picture."""
+    h = int(34 * scale)
+    draw.line([(x, base_y), (x, base_y - h)], fill=(96, 74, 48),
+              width=max(2, int(3 * scale)))
+    for side in (-1, 1):
+        lx = x + int(13 * scale) * side
+        ly = base_y - h + int(4 * scale)
+        draw.ellipse([min(x, lx), ly - int(7 * scale), max(x, lx), ly + int(7 * scale)],
+                     fill=(72, 158, 108))
+    top = base_y - h
+    draw.ellipse([x - int(7 * scale), top - int(12 * scale),
+                  x + int(7 * scale), top + int(2 * scale)], fill=(88, 176, 122))
+    # The mound of fresh earth around it.
+    draw.ellipse([x - int(17 * scale), base_y - int(4 * scale),
+                  x + int(17 * scale), base_y + int(7 * scale)], fill=(58, 46, 32))
+
+
+def _shadow(draw, cx, base_y, width, scale):
+    """A flat ellipse under anything standing on the ground.
+
+    Without it the trees look pasted on rather than planted - the cheapest
+    trick in flat illustration.
+    """
+    w = int(width * scale)
+    h = max(2, int(width * 0.17 * scale))
+    draw.ellipse([cx - w, base_y - h, cx + w, base_y + h], fill=(13, 62, 43))
+
+
 def _tree(draw, cx, base_y, scale):
     """A simple flat-illustration tree: trunk, then overlapping canopy discs."""
     trunk_w = int(16 * scale)
@@ -136,16 +230,43 @@ def make_banner(name: str) -> bytes:
     s = SCALE
     size = (WIDTH * s, HEIGHT * s)
     image = _gradient(size)
+
+    # Light first: everything after this sits in front of it.
+    image = _sun(image, int(WIDTH * 0.80) * s, int(HEIGHT * 0.20) * s,
+                 int(210 * s))
     draw = ImageDraw.Draw(image)
 
+    _birds(draw, s)
     _leaves(draw, s)
 
-    # Ground: a wide, very flat ellipse reads as a horizon without a hard edge.
-    ground_top = int(HEIGHT * 0.74) * s
-    draw.ellipse([-int(200 * s), ground_top, size[0] + int(200 * s),
-                  ground_top + int(260 * s)], fill=(16, 70, 49))
+    # Three hill layers, palest and highest at the back. Distance is mostly
+    # about contrast falling off, so the far hill is close to the sky colour.
+    far_y = int(HEIGHT * 0.62) * s
+    _hill(draw, far_y, int(210 * s), (41, 116, 80), size[0], bulge=0.45)
 
-    _tree(draw, int(WIDTH * 0.845) * s, ground_top + int(14 * s), s)
+    # Far treeline. Kept to the right of the text column - on the left it
+    # collided with the gold rule and the initiative line.
+    for x, h in ((836, 30), (880, 42), (932, 32), (1096, 38), (1150, 28),
+                 (1194, 36)):
+        _distant_tree(draw, int(x * s), far_y + int(18 * s), int(h * s),
+                      (28, 96, 66))
+
+    mid_y = int(HEIGHT * 0.71) * s
+    _hill(draw, mid_y, int(230 * s), (27, 100, 69), size[0], bulge=0.9)
+
+    # Ground: a wide, very flat ellipse reads as a horizon without a hard edge.
+    ground_top = int(HEIGHT * 0.78) * s
+    _hill(draw, ground_top, int(260 * s), (16, 74, 51), size[0], bulge=1.4)
+
+    tree_x, tree_base = int(WIDTH * 0.845) * s, ground_top + int(20 * s)
+    sap_x, sap_base = int(WIDTH * 0.705) * s, ground_top + int(30 * s)
+
+    _shadow(draw, tree_x, tree_base, 74, s)
+    _shadow(draw, sap_x, sap_base, 22, s)
+
+    _grass(draw, ground_top + int(26 * s), s, size[0])
+    _tree(draw, tree_x, tree_base, s)
+    _sapling(draw, sap_x, sap_base, s)
 
     left = int(84 * s)
     college = _font(int(17 * s))
