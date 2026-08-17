@@ -55,7 +55,16 @@ def _fit_font(draw, text, max_w, max_h):
 
 
 def make_poster(name, template_path=None):
-    """Returns the finished poster as PNG bytes, or None in HTML banner mode."""
+    """Returns the greeting image as PNG bytes, or None in HTML-banner mode.
+
+    "banner" draws the whole thing from scratch (src/banner.py) - no template
+    file to keep in sync. "image" is the older path: your own artwork with the
+    name composited on top.
+    """
+    if config.POSTER_MODE == "banner":
+        from . import banner
+        return banner.make_banner(name)
+
     if config.POSTER_MODE != "image":
         return None
 

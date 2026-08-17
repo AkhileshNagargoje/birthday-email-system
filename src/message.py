@@ -144,13 +144,30 @@ def steps_html():
         </table>"""
 
 
-def html(student, image_cid, note=""):
+def html(student, image_src, note=""):
+    """`image_src` is the full src for the banner - "cid:..." when the image
+    travels with the email, or a data: URI when previewing. None means draw
+    the header in HTML instead."""
     # A name with & or < would otherwise break the markup.
     student = _Escaped(student)
 
-    if image_cid:
-        header = (f'<img src="cid:{image_cid}" alt="Happy Birthday {student.name}" '
-                  f'style="display:block;width:100%;height:auto;" />')
+    if image_src:
+        # The banner sits on a green cell with pale alt text, so a client that
+        # blocks images shows a green band saying "Happy Birthday, <name>"
+        # rather than a broken-image icon on white.
+        header = f"""
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+             border="0" bgcolor="#14523a" style="background-color:#14523a;">
+        <tr>
+          <td align="center" style="background-color:#14523a;line-height:0;">
+            <img src="{image_src}" width="600"
+                 alt="Happy Birthday, {student.name} — {_html.escape(config.INITIATIVE_NAME)}"
+                 style="display:block;width:100%;max-width:600px;height:auto;
+                        border:0;outline:none;text-decoration:none;
+                        font-family:Georgia,serif;font-size:20px;color:#ffffff;" />
+          </td>
+        </tr>
+      </table>"""
     else:
         header = banner_html(student.name)
 
