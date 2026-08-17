@@ -116,23 +116,16 @@ def check_login():
 
 def preview_greeting(name, stem="preview"):
     """Writes what the recipient would see: a PNG in image mode, or the
-    whole email as an .html file in banner mode."""
+    whole email as an .html file otherwise."""
     config.OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    if config.POSTER_MODE == "image":
+        return poster.save_poster(name, config.OUT_DIR / f"{stem}.png")
 
     student = roster.Student(name=name, email="preview@example.com",
                              dob=config.today())
-
-    # Inline the banner as a data: URI so the preview is the whole email, not
-    # the image on its own - what you see is what the student sees.
-    image_src = None
-    image = poster.make_poster(name)
-    if image:
-        import base64
-        image_src = "data:image/png;base64," + base64.b64encode(image).decode()
-        (config.OUT_DIR / f"{stem}.png").write_bytes(image)
-
     path = config.OUT_DIR / f"{stem}.html"
-    path.write_text(message.html(student, image_src), encoding="utf-8")
+    path.write_text(message.html(student, None), encoding="utf-8")
     return path
 
 
