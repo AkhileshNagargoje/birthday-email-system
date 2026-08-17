@@ -74,7 +74,8 @@ class Mailer:
         image_cid = make_msgid(domain="birthday.local")
         bare_cid = image_cid[1:-1]  # strip the <angle brackets> for the HTML src
 
-        msg.add_alternative(message.html(student, bare_cid, note), subtype="html")
+        msg.add_alternative(message.html(student, f"cid:{bare_cid}", note),
+                            subtype="html")
 
         # Attach to the HTML part so the image renders inline, not as a stray file.
         html_part = msg.get_payload()[1]
