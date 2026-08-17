@@ -3,7 +3,7 @@
 import smtplib
 import ssl
 from email.message import EmailMessage
-from email.utils import formataddr, make_msgid
+from email.utils import formataddr, formatdate, make_msgid
 
 from . import config, message
 
@@ -54,6 +54,12 @@ class Mailer:
 
     def build(self, student, poster_bytes, to_address, note=""):
         msg = EmailMessage()
+        # Date and Message-ID are set explicitly. smtplib never adds them, and
+        # whether Gmail's submission service stamps them when missing is
+        # undocumented - a message arriving without Date violates RFC 5322 and
+        # trips MISSING_DATE/MISSING_MID spam heuristics. Not worth the bet.
+        msg["Date"] = formatdate(localtime=True)
+        msg["Message-ID"] = make_msgid()
         msg["Subject"] = message.subject(student)
         msg["From"] = formataddr((config.EMAIL_FROM_NAME, config.EMAIL_USER))
         msg["To"] = to_address
