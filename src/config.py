@@ -33,20 +33,6 @@ SMTP_PORT = int(_get("SMTP_PORT", "587") or 587)
 # ---- Safety ----------------------------------------------------------------
 TEST_EMAIL = _get("TEST_EMAIL")
 
-# ---- The initiative --------------------------------------------------------
-# The message asks students to plant a tree on their birthday. These are the
-# details that change - who signs it, where saplings come from - so they live
-# here rather than in the wording.
-INITIATIVE_NAME = _get("INITIATIVE_NAME", "One Birthday, One Tree")
-HOD_NAME = _get("HOD_NAME", "Dr. Umankant Butkar")
-HOD_TITLE = _get("HOD_TITLE", "Head of Department")
-# Where to collect a sapling. Keep it concrete: "plant a tree" is a nice idea,
-# "collect a sapling from X between Y" is something someone can actually do.
-SAPLING_INFO = _get(
-    "SAPLING_INFO",
-    "Collect a free sapling from the college nursery, any weekday.",
-)
-
 # ---- Time ------------------------------------------------------------------
 # "Today" means today HERE, not on whatever machine happens to run this.
 # GitHub's runners are UTC, so a midnight-IST send would otherwise look up
