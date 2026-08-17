@@ -57,7 +57,7 @@ def banner_html(name):
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
              border="0" bgcolor="#14523a" style="background-color:#14523a;">
         <tr>
-          <td align="center" style="padding:14px 24px 0;background-color:#14523a;
+          <td align="center" class="hero" style="padding:14px 20px 0;background-color:#14523a;
               background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
             <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
                         font-size:10.5px;letter-spacing:.26em;font-weight:600;
@@ -67,13 +67,13 @@ def banner_html(name):
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding:22px 24px 6px;background-color:#14523a;
+          <td align="center" class="hero" style="padding:20px 20px 6px;background-color:#14523a;
               background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
             <div style="font-size:44px;line-height:1;">&#127795;</div>
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding:10px 24px 0;background-color:#1b5e3f;
+          <td align="center" class="hero" style="padding:10px 20px 0;background-color:#1b5e3f;
               background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
             <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;
                         font-size:11.5px;letter-spacing:.3em;font-weight:600;
@@ -83,17 +83,17 @@ def banner_html(name):
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding:6px 24px 4px;background-color:#1b5e3f;
+          <td align="center" class="hero" style="padding:6px 20px 4px;background-color:#1b5e3f;
               background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
             <div style="font-family:Georgia,'Times New Roman',serif;
-                        font-size:36px;line-height:1.2;font-weight:700;
-                        color:#ffffff;letter-spacing:-0.01em;">
+                        font-size:33px;line-height:1.2;font-weight:700;
+                        color:#ffffff;letter-spacing:-0.01em;" class="name">
               {name}
             </div>
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding:14px 24px 34px;background-color:#2b7a4e;
+          <td align="center" class="hero" style="padding:14px 20px 28px;background-color:#2b7a4e;
               background-image:linear-gradient(165deg,#0f4230 0%,#1b5e3f 55%,#2b7a4e 100%);">
             <!-- A short rule instead of a divider line: quieter, and it reads
                  as ornament rather than a seam. -->
@@ -118,7 +118,7 @@ def steps_html():
         ("3", "Reply", "with a photo"),
     ]
     cells = "".join(f"""
-            <td width="33%" align="center" valign="top" style="padding:0 6px;">
+            <td width="33%" align="center" valign="top" class="step" style="padding:0 6px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0"
                      align="center">
                 <tr>
@@ -183,7 +183,7 @@ def html(student, image_src, note=""):
         # sentence of context, then the request set apart where the eye lands,
         # then the practical detail that makes it doable.
         body = f"""
-        <p style="margin:0 0 18px;font-size:16px;line-height:1.65;color:#33383a;">
+        <p class="body-t" style="margin:0 0 18px;font-size:16px;line-height:1.65;color:#33383a;">
           Every year on your birthday you get a little older — and so does
           everything around you. This year the department would like you to
           leave something behind that will outgrow you.
@@ -192,11 +192,11 @@ def html(student, image_src, note=""):
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                border="0" style="margin:0 0 24px;">
           <tr>
-            <td bgcolor="#f0f7f2" style="background-color:#f0f7f2;
+            <td bgcolor="#f0f7f2" class="ask" style="background-color:#f0f7f2;
                        border:1px solid #d7e8de;border-left:4px solid #2b7a4e;
-                       padding:22px 24px;border-radius:0 10px 10px 0;">
-              <div style="font-family:Georgia,'Times New Roman',serif;
-                          font-size:25px;font-weight:700;color:#14523a;
+                       padding:20px 22px;border-radius:0 10px 10px 0;">
+              <div class="ask-h" style="font-family:Georgia,'Times New Roman',serif;
+                          font-size:24px;font-weight:700;color:#14523a;
                           line-height:1.25;letter-spacing:-0.01em;">
                 Plant one tree today.
               </div>
@@ -211,7 +211,7 @@ def html(student, image_src, note=""):
 
         {steps_html()}
 
-        <p style="margin:0 0 22px;font-size:15.5px;line-height:1.65;color:#3a4a40;
+        <p class="body-t" style="margin:0 0 22px;font-size:15.5px;line-height:1.65;color:#3a4a40;
                   text-align:center;">
           Send us the photo and we will add your tree to the count.<br>
           <span style="color:#6a7d70;font-size:14.5px;">
@@ -235,14 +235,38 @@ def html(student, image_src, note=""):
     return f"""\
 <!DOCTYPE html>
 <html>
-  <body style="margin:0;padding:24px;background:#f2f5f2;
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      /* Phones. Gmail, Apple Mail and Outlook mobile all honour this; the
+         clients that ignore it fall back to the inline styles, which are
+         already sized to fit a narrow screen. */
+      @media only screen and (max-width:480px) {{
+        .wrap    {{ padding:10px !important; }}
+        .card    {{ border-radius:10px !important; }}
+        .pad     {{ padding:20px 18px 22px !important; }}
+        .hero    {{ padding-left:16px !important; padding-right:16px !important; }}
+        .name    {{ font-size:27px !important; }}
+        .ask     {{ padding:16px 16px !important; }}
+        .ask-h   {{ font-size:20px !important; }}
+        .body-t  {{ font-size:15px !important; }}
+        /* Three steps side by side become three stacked rows: 90px columns
+           are unreadable, and stacking is what a phone wants anyway. */
+        .step    {{ display:block !important; width:100% !important;
+                    padding:0 0 14px !important; }}
+      }}
+    </style>
+  </head>
+  <body class="wrap" style="margin:0;padding:20px;background:#f2f5f2;
                font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1a;">
-    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:12px;
-                overflow:hidden;box-shadow:0 2px 12px rgba(20,60,40,.10);">
+    <div class="card" style="max-width:600px;margin:0 auto;background:#ffffff;
+                border-radius:12px;overflow:hidden;
+                box-shadow:0 2px 12px rgba(20,60,40,.10);">
 
       {header}
 
-      <div style="padding:32px 34px 28px;">
+      <div class="pad" style="padding:28px 30px 26px;">
         <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;
                   font-size:19px;line-height:1.45;color:#14523a;">
           Happy Birthday, {student.first_name}!
