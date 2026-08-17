@@ -28,8 +28,10 @@ def plain_text(student, note=""):
             "PLANT ONE TREE TODAY.\n\n"
             f"{config.SAPLING_INFO}\n"
             "Plant it on campus or at home - your choice. It takes twenty minutes.\n\n"
-            "Then reply to this email with a photo of you and your tree. We are\n"
-            "collecting every one of them.\n\n"
+            "Then reply to this email with a photo of you and your tree - we\n"
+            "will add it to the count. Every student gets this note on their\n"
+            "birthday; by the time you graduate, your batch will have planted\n"
+            "hundreds.\n\n"
             f"{config.INITIATIVE_NAME}. That is the whole idea."
         )
     return (
@@ -213,9 +215,9 @@ def html(student, image_src, note=""):
 
         <p class="body-t" style="margin:0 0 22px;font-size:15.5px;line-height:1.65;color:#3a4a40;
                   text-align:center;">
-          Send us the photo and we will add your tree to the count.<br>
+          Reply with the photo and we will add your tree to the count.<br>
           <span style="color:#6a7d70;font-size:14.5px;">
-            Every student gets this email on their birthday. By the time you
+            Every student gets this note on their birthday. By the time you
             graduate, your batch will have planted hundreds.
           </span>
         </p>
@@ -291,8 +293,8 @@ def html(student, image_src, note=""):
         <td align="center" style="padding:18px 24px 0;">
           <div style="max-width:600px;font-family:Segoe UI,Helvetica,Arial,sans-serif;
                       font-size:11.5px;line-height:1.55;color:#7d8a82;">
-            You are receiving this because your birthday is recorded with
-            {config.EMAIL_FROM_NAME}.
+            {_html.escape(config.INITIATIVE_NAME)} &middot; a
+            {config.EMAIL_FROM_NAME} initiative
           </div>
         </td>
       </tr>
