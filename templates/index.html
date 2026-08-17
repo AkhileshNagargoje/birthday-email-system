@@ -695,7 +695,14 @@ function showPreview(kind, url) {
   }
 }
 
+let inFlight = false;
+
 async function post(url, body) {
+  // One action at a time. The send history shows why: an un-debounced button
+  // double-fired and dispatched the same email twice, seconds apart.
+  if (inFlight) { show('Still working on the previous action…'); return null; }
+  inFlight = true;
+  document.querySelectorAll('button').forEach((b) => { b.disabled = true; });
   show('Working…');
   try {
     const res = await fetch(url, {
@@ -709,6 +716,9 @@ async function post(url, body) {
   } catch (err) {
     show('Something went wrong: ' + err);
     return null;
+  } finally {
+    inFlight = false;
+    document.querySelectorAll('button').forEach((b) => { b.disabled = false; });
   }
 }
 
