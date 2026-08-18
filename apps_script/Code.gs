@@ -27,14 +27,15 @@ const CONFIG = {
   FROM_NAME: 'GCOERC',
 
   // Where the daily summary goes. Blank = no report.
-  REPORT_EMAIL: '',
+  REPORT_EMAIL: 'hymanper@gmail.com',
 
   // Replies land here. Blank = the account running the script.
-  REPLY_TO: '',
+  REPLY_TO: 'hymanper@gmail.com',
 
-  // SAFETY NET. While this holds an address, every greeting goes there
-  // instead of to students. Set it, watch one run, then clear it.
-  TEST_EMAIL: '',
+  // SAFETY NET, deliberately on. While this holds an address, every greeting
+  // goes there instead of to students. Watch one real run land, then clear it
+  // to '' to go live.
+  TEST_EMAIL: 'hymanper@gmail.com',
 
   // Send the report even on days when nobody has a birthday, as proof the
   // schedule ran at all.
